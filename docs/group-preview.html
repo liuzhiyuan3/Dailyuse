@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dailyuse · 群组页面三个方向</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #E9E6E0; color: #1a1a1a; min-height: 100vh;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header { padding: 44px 24px 4px; text-align: center; }
+  .eyebrow { font-size: 10px; letter-spacing: 3.2px; color: #98938a; text-transform: uppercase; margin-bottom: 12px; }
+  header h1 { font-size: 24px; font-weight: 600; }
+  header p { margin-top: 10px; font-size: 12.5px; color: #6f6a62; line-height: 1.7; }
+  header .hint { margin-top: 4px; font-size: 11px; color: #a19b91; }
+
+  .stage { display: flex; gap: 38px; justify-content: center; flex-wrap: wrap; padding: 36px 24px 80px; align-items: flex-start; }
+  .wrap { width: 320px; }
+
+  .phone {
+    position: relative; width: 320px; height: 700px;
+    border: 9px solid #17181a; border-radius: 44px; overflow: hidden;
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    box-shadow: 0 22px 48px rgba(40,35,28,.18), 0 2px 6px rgba(40,35,28,.08);
+    --bg:#F4F6FB; --fg:#16203A; --muted:#8A94AB; --accent:#3B5BDB;
+    --line:#E6EAF4; --card:#FFFFFF; --radius:16px;
+    --shadow:0 6px 20px rgba(59,91,219,.08);
+    --grad: linear-gradient(135deg,#5C7CFA,#3B5BDB);
+  }
+  .status { flex: 0 0 28px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 10px; color: var(--fg); opacity: .7; }
+  .capsule {
+    position: absolute; top: 34px; right: 14px; z-index: 6;
+    height: 30px; padding: 0 10px; border-radius: 999px;
+    background: rgba(255,255,255,.9); border: 1px solid rgba(0,0,0,.08);
+    display: flex; align-items: center; gap: 8px; font-size: 12px; color: #333;
+  }
+  .navspace { flex: 0 0 46px; }
+  .screen { flex: 1; overflow-y: auto; padding: 0 18px 10px; scrollbar-width: none; }
+  .screen::-webkit-scrollbar { display: none; }
+  .hidden { display: none; }
+
+  .ghead {
+    padding: 15px; border-radius: var(--radius); color: #fff;
+    background: var(--grad); position: relative; overflow: hidden;
+    box-shadow: 0 10px 24px rgba(59,91,219,.24);
+  }
+  .ghead::after { content:''; position:absolute; right:-26px; bottom:-34px; width:100px; height:100px; border-radius:50%; background:rgba(255,255,255,.13); }
+  .gt { font-size: 18px; font-weight: 600; letter-spacing: .4px; }
+  .gd { margin-top: 5px; font-size: 10px; opacity: .85; }
+  .gacts { display: flex; gap: 8px; margin-top: 12px; }
+  .gbadge { padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.32); font-size: 9.5px; }
+
+  .sec { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 0 9px; font-size: 10px; letter-spacing: 1.1px; color: var(--muted); }
+  .sec .more { letter-spacing: 0; color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .cell {
+    padding: 12px 3px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .cell svg { width: 19px; height: 19px; color: var(--accent); }
+  .cell .label { font-size: 10px; color: var(--fg); }
+  .cell.add { border-style: dashed; background: transparent; box-shadow: none; }
+  .cell.add .plus { font-size: 17px; color: var(--muted); }
+
+  .summary { display: flex; align-items: center; padding: 11px 3px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .sitem { flex: 1; text-align: center; }
+  .k { font-size: 9px; color: var(--muted); }
+  .v { margin-top: 4px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .unit { font-size: 9px; color: var(--muted); font-weight: 400; }
+  .sdiv { width: 1px; height: 24px; background: var(--line); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 13px 14px; }
+  .card + .card { margin-top: 9px; }
+  .ch { display: flex; align-items: center; gap: 7px; }
+  .ch svg { width: 15px; height: 15px; color: var(--accent); }
+  .ct { flex: 1; font-size: 12.5px; font-weight: 600; }
+  .cmeta { font-size: 9.5px; color: var(--muted); }
+
+  .item { display: flex; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 11.5px; }
+  .item:last-child { border-bottom: none; }
+  .ck { width: 16px; height: 16px; border-radius: 5px; border: 1.4px solid var(--line); flex: 0 0 16px; display: grid; place-items: center; font-size: 9px; color: #fff; }
+  .item.done .ck { background: var(--accent); border-color: transparent; }
+  .item.done .tx { color: var(--muted); text-decoration: line-through; }
+  .tx { flex: 1; }
+
+  .feed { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 2px 13px; }
+  .fitem { display: flex; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .fitem:last-child { border-bottom: none; }
+  .fdot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex: 0 0 6px; }
+  .ftxt { flex: 1; font-size: 11px; line-height: 1.5; }
+  .ftime { font-size: 9.5px; color: var(--muted); }
+
+  /* B：卡片流 */
+  .daylabel { margin: 18px 0 8px; font-size: 10px; letter-spacing: 1.2px; color: var(--muted); }
+  .money { display: flex; align-items: baseline; gap: 4px; margin-top: 8px; }
+  .money .amt { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .money .cur { font-size: 11px; color: var(--muted); }
+  .who { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 10px; color: var(--muted); }
+  .av { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 8px; color: #fff; font-weight: 600; }
+
+  /* C：Tab */
+  .tabs { display: flex; gap: 4px; margin-top: 14px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .tb { flex: 1; text-align: center; padding: 7px 0; border-radius: 9px; font-size: 10.5px; color: var(--muted); }
+  .tb.on { background: var(--accent); color: #fff; font-weight: 600; }
+  .toolbody { margin-top: 12px; }
+
+  .fab {
+    position: absolute; right: 18px; bottom: 74px; z-index: 8;
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--grad); color: #fff; font-size: 20px;
+    display: grid; place-items: center;
+    box-shadow: 0 8px 18px rgba(59,91,219,.3);
+  }
+
+  .tabbar { flex: 0 0 56px; display: flex; align-items: center; border-top: 1px solid var(--line); background: var(--bg); }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9.5px; color: var(--muted); }
+  .tab.on { color: var(--accent); font-weight: 600; }
+  .tab svg { width: 18px; height: 18px; }
+
+  .back { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin: 6px 0 4px; }
+  .pagetitle { font-size: 19px; font-weight: 600; }
+
+  .meta { padding: 18px 4px 0; }
+  .mname { font-size: 15px; font-weight: 600; }
+  .mtag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #dcd8d0; color: #57534b; font-size: 10.5px; font-weight: 400; }
+  .mdesc { margin-top: 9px; font-size: 12px; line-height: 1.7; color: #6f6a62; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">DAILYUSE · GROUP</div>
+  <h1>群组页面 · 三个结构方向</h1>
+  <p>配色统一用 E 青黛，差异在「工具怎么组织」。点卡片可进对应工具页。</p>
+  <p class="hint">视觉稿；选定后我再接后端</p>
+</header>
+
+<main class="stage" id="stage"></main>
+
+<script>
+const I = {
+  todo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg>',
+  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6l1.2 1.2L7 5.2M4 12l1.2 1.2L7 11.2M4 18l1.2 1.2L7 17.2"/></svg>',
+  money: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.5 9.8h3.8a1.7 1.7 0 0 1 0 3.4H10a1.7 1.7 0 0 0 0 3.4h4"/></svg>',
+  event: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M9 15h6"/></svg>',
+  poll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>',
+  grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>',
+  group: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3"/><path d="M3 19c0-3.2 2.6-5 6-5s6 1.8 6 5"/><path d="M16 6.2a3 3 0 0 1 0 5.6M17.5 14.4c2.2.6 3.5 2.2 3.5 4.6"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.8 3-5.8 7-5.8s7 2 7 5.8"/></svg>'
+};
+
+const MEMBERS = [
+  { n: '我', c: '#5C7CFA' },
+  { n: '妈', c: '#22B8CF' },
+  { n: '爸', c: '#51CF66' }
+];
+
+const ghead = () => `
+  <div class="ghead">
+    <div class="gt">一家人</div>
+    <div class="gd">3 位成员 · 本周 2 / 4 完成</div>
+    <div class="gacts"><span class="gbadge">＋ 邀请</span><span class="gbadge">群设置</span></div>
+  </div>`;
+
+/* ============ A：仪表盘 ============ */
+function demoA(id) {
+  const cells = [
+    ['todo', '待办'], ['list', '清单'], ['money', 'AA 记账'], ['event', '日程']
+  ].map(([ic, lb]) => `<div class="cell" onclick="toTool('${id}')">${I[ic]}<span class="label">${lb}</span></div>`).join('')
+    + `<div class="cell" onclick="toTool('${id}')">${I.poll}<span class="label">投票</span></div>
+       <div class="cell add"><span class="plus">＋</span><span class="label">添加</span></div>`;
+
+  return `
+  <div class="screen" id="home-${id}">
+    ${ghead()}
+
+    <div class="sec"><span>群工具</span><span class="more">编辑</span></div>
+    <div class="grid">${cells}</div>
+
+    <div class="sec"><span>今天</span><span class="more">详情</span></div>
+    <div class="summary">
+      <div class="sitem"><div class="k">待办</div><div class="v">2<span class="unit">件</span></div></div>
+      <div class="sdiv"></div>
+      <div class="sitem"><div class="k">本周开销</div><div class="v">¥320</div></div>
+      <div class="sdiv"></div>
+      <div class="sitem"><div class="k">下次活动</div><div class="v">周六</div></div>
+    </div>
+
+    <div class="sec"><span>购物清单</span><span class="more">全部</span></div>
+    <div class="card">
+      <div class="item done"><span class="ck">✓</span><span class="tx">牛奶</span></div>
+      <div class="item"><span class="ck"></span><span class="tx">鸡蛋</span></div>
+      <div class="item"><span class="ck"></span><span class="tx">面包</span></div>
+    </div>
+
+    <div class="sec"><span>动态</span><span class="more">全部</span></div>
+    <div class="feed">
+      <div class="fitem"><span class="fdot"></span><div class="ftxt">妈 买了牛奶</div><span class="ftime">12:40</span></div>
+      <div class="fitem"><span class="fdot"></span><div class="ftxt">爸 记了一笔 ¥128</div><span class="ftime">11:20</span></div>
+    </div>
+  </div>
+
+  <div class="screen hidden" id="tool-${id}">
+    <div class="back" onclick="toHome('${id}')">‹ 一家人</div>
+    <div class="pagetitle">购物清单</div>
+    <div class="card" style="margin-top:12px">
+      <div class="item done"><span class="ck">✓</span><span class="tx">牛奶</span><span class="cmeta">妈</span></div>
+      <div class="item"><span class="ck"></span><span class="tx">鸡蛋</span><span class="cmeta">我</span></div>
+      <div class="item"><span class="ck"></span><span class="tx">面包</span><span class="cmeta">我</span></div>
+    </div>
+    <div class="card"><div class="cmeta">＋ 添加一项，全家同步</div></div>
+  </div>`;
+}
+
+/* ============ B：卡片流 ============ */
+function demoB(id) {
+  return `
+  <div class="screen" id="home-${id}">
+    ${ghead()}
+
+    <div class="daylabel">今天</div>
+    <div class="card" onclick="toTool('${id}')">
+      <div class="ch">${I.todo}<span class="ct">待办</span><span class="cmeta">2 / 4</span></div>
+      <div style="margin-top:6px">
+        <div class="item"><span class="ck"></span><span class="tx">交水电费</span></div>
+        <div class="item"><span class="ck"></span><span class="tx">买周末的菜</span></div>
+      </div>
+    </div>
+
+    <div class="card" onclick="toTool('${id}')">
+      <div class="ch">${I.list}<span class="ct">购物清单</span><span class="cmeta">3 项</span></div>
+      <div style="margin-top:6px">
+        <div class="item done"><span class="ck">✓</span><span class="tx">牛奶</span></div>
+        <div class="item"><span class="ck"></span><span class="tx">鸡蛋</span></div>
+      </div>
+    </div>
+
+    <div class="daylabel">本周</div>
+    <div class="card">
+      <div class="ch">${I.money}<span class="ct">AA 记账</span><span class="cmeta">3 笔</span></div>
+      <div class="money"><span class="cur">¥</span><span class="amt">320</span><span class="cmeta">本周总支出</span></div>
+      <div class="who"><span class="av" style="background:#5C7CFA">我</span>垫付 ¥128 · 待收 ¥64</div>
+    </div>
+
+    <div class="card">
+      <div class="ch">${I.event}<span class="ct">周六露营</span><span class="cmeta">10/24</span></div>
+      <div class="cmeta" style="margin-top:8px">集合 9:00 · 城郊营地</div>
+      <div class="who">
+        <span class="av" style="background:#5C7CFA">我</span>
+        <span class="av" style="background:#22B8CF">妈</span>
+        <span class="av" style="background:#51CF66">爸</span>
+        <span style="margin-left:4px">3 人参加</span>
+      </div>
+    </div>
+
+    <div class="daylabel">待定</div>
+    <div class="card">
+      <div class="ch">${I.poll}<span class="ct">周末吃什么</span><span class="cmeta">2 票</span></div>
+      <div class="cmeta" style="margin-top:8px">火锅 2 · 烤肉 1</div>
+    </div>
+  </div>
+
+  <div class="screen hidden" id="tool-${id}">
+    <div class="back" onclick="toHome('${id}')">‹ 一家人</div>
+    <div class="pagetitle">AA 记账</div>
+    <div class="card" style="margin-top:12px">
+      <div class="money"><span class="cur">¥</span><span class="amt">320</span><span class="cmeta">本周</span></div>
+      <div class="who"><span class="av" style="background:#5C7CFA">我</span>我垫付 ¥128，待收 ¥64</div>
+    </div>
+    <div class="card">
+      <div class="item"><span class="ck"></span><span class="tx">超市采购</span><span class="cmeta">¥128 · 我付</span></div>
+      <div class="item"><span class="ck"></span><span class="tx">外卖</span><span class="cmeta">¥56 · 妈付</span></div>
+      <div class="item"><span class="ck"></span><span class="tx">水果</span><span class="cmeta">¥136 · 爸付</span></div>
+    </div>
+  </div>`;
+}
+
+/* ============ C：Tab 分栏 ============ */
+function demoC(id) {
+  return `
+  <div class="screen" id="home-${id}">
+    ${ghead()}
+
+    <div class="tabs">
+      <div class="tb on">待办</div>
+      <div class="tb">清单</div>
+      <div class="tb">记账</div>
+      <div class="tb">活动</div>
+    </div>
+
+    <div class="toolbody">
+      <div class="card">
+        <div class="item"><span class="ck"></span><span class="tx">交水电费</span><span class="cmeta">我</span></div>
+        <div class="item"><span class="ck"></span><span class="tx">买周末的菜</span><span class="cmeta">妈</span></div>
+        <div class="item done"><span class="ck">✓</span><span class="tx">取快递</span><span class="cmeta">爸</span></div>
+      </div>
+
+      <div class="card">
+        <div class="ch">${I.money}<span class="ct">AA 记账</span><span class="cmeta">¥320</span></div>
+        <div class="cmeta" style="margin-top:6px">我垫付 ¥128 · 待收 ¥64</div>
+      </div>
+
+      <div class="card">
+        <div class="ch">${I.event}<span class="ct">周六露营</span><span class="cmeta">10/24</span></div>
+      </div>
+
+      <div class="card">
+        <div class="ch">${I.poll}<span class="ct">周末吃什么</span><span class="cmeta">2 票</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen hidden" id="tool-${id}">
+    <div class="back" onclick="toHome('${id}')">‹ 一家人</div>
+    <div class="pagetitle">待办</div>
+    <div class="card" style="margin-top:12px">
+      <div class="item"><span class="ck"></span><span class="tx">交水电费</span><span class="cmeta">我</span></div>
+      <div class="item"><span class="ck"></span><span class="tx">买周末的菜</span><span class="cmeta">妈</span></div>
+      <div class="item done"><span class="ck">✓</span><span class="tx">取快递</span><span class="cmeta">爸</span></div>
+      <div class="item"><span class="ck"></span><span class="tx">预约体检</span><span class="cmeta">爸</span></div>
+    </div>
+  </div>`;
+}
+
+const THEMES = [
+  { id: 'a', name: 'A · 仪表盘', tag: '工具优先', desc: '群头 + 工具宫格 + 今日概览 + 动态。信息层级最清楚，工具可增删，适合把群当成「家庭控制台」。', body: demoA },
+  { id: 'b', name: 'B · 卡片流', tag: '生活流', desc: '没有宫格，按时间把待办/清单/记账/活动串成一条流。最像在过日子，但功能入口不够显眼。', body: demoB },
+  { id: 'c', name: 'C · 分栏', tag: '功能齐全', desc: '群头 + 四个 tab（待办/清单/记账/活动），每类独立一屏。功能最多，但每次切换要多一步。', body: demoC }
+];
+
+function phone(t) {
+  return `
+  <section class="wrap">
+    <div class="phone">
+      <div class="status"><span>20:30</span><span>●●●●</span></div>
+      <div class="capsule"><span>···</span><span>⊙</span></div>
+      <div class="navspace"></div>
+      ${t.body(t.id)}
+      <div class="fab" onclick="toTool('${t.id}')">＋</div>
+      <div class="tabbar">
+        <div class="tab">${I.grid}<span>工具</span></div>
+        <div class="tab on">${I.group}<span>群组</span></div>
+        <div class="tab">${I.user}<span>我的</span></div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="mname">${t.name}<span class="mtag">${t.tag}</span></div>
+      <p class="mdesc">${t.desc}</p>
+    </div>
+  </section>`;
+}
+
+function toTool(id) {
+  document.getElementById('home-' + id).classList.add('hidden');
+  document.getElementById('tool-' + id).classList.remove('hidden');
+}
+function toHome(id) {
+  document.getElementById('tool-' + id).classList.add('hidden');
+  document.getElementById('home-' + id).classList.remove('hidden');
+}
+
+document.getElementById('stage').innerHTML = THEMES.map(phone).join('');
+</script>
+</body>
+</html>

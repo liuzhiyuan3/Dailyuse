@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ===== 后端：迁移能否落地 + 类型 + 38 项冒烟 =====
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: dailyuse
+          POSTGRES_PASSWORD: dailyuse
+          POSTGRES_DB: dailyuse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dailyuse -d dailyuse"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://dailyuse:dailyuse@localhost:5432/dailyuse
+      SHADOW_DATABASE_URL: postgresql://dailyuse:dailyuse@localhost:5432/dailyuse_shadow
+      JWT_SECRET: ci-only-secret-not-for-production
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 建影子库（给迁移一致性检查用）
+        run: psql "$DATABASE_URL" -c "CREATE DATABASE dailyuse_shadow"
+
+      - name: 应用迁移（空库建表，验证 migrations 齐全）
+        run: npx prisma migrate deploy
+
+      - name: 迁移与 schema 是否一致（改了 schema 却忘了生成迁移就红）
+        run: >-
+          npx prisma migrate diff
+          --from-migrations prisma/migrations
+          --to-schema-datamodel prisma/schema.prisma
+          --shadow-database-url "$SHADOW_DATABASE_URL"
+          --exit-code
+
+      - name: 类型检查
+        run: npx tsc -p tsconfig.json --noEmit
+
+      - name: 编译
+        run: npm run build
+
+      - name: 启动服务
+        run: |
+          node dist/index.js > /tmp/api.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3000/api/health > /dev/null; then
+              echo "服务已就绪"; exit 0
+            fi
+            sleep 1
+          done
+          echo "服务启动失败"; tail -50 /tmp/api.log; exit 1
+
+      - name: 接口冒烟（38 项）
+        run: npm run smoke
+
+      - name: 失败时打印服务日志
+        if: failure()
+        run: tail -100 /tmp/api.log || true
+
+  # ===== 小程序：能否构建 + 包体预算 =====
+  miniapp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: miniapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: miniapp/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建（生产模式）
+        run: npm run build:mp-weixin
+
+      - name: 包体预算（主包 2MB 硬限，这里卡 1.5MB）
+        run: npm run check:size
+
+  # ===== 依赖漏洞：只卡运行时依赖的高危项 =====
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: npm audit（high 及以上阻断）
+        run: npm audit --omit=dev --audit-level=high

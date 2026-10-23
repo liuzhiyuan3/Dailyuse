@@ -1,0 +1,33 @@
+/* 全局 scss 变量（与 tokens.scss 的 CSS 变量保持一致） */
+$uni-color-primary: #3B5BDB;
+$uni-color-success: #37B24D;
+$uni-color-warning: #F59F00;
+$uni-color-error: #E03131;
+
+$uni-text-color: #16203A;
+$uni-text-color-inverse: #ffffff;
+$uni-text-color-grey: #8A94AB;
+$uni-text-color-placeholder: #A5AEC2;
+$uni-text-color-disable: #C4CBDA;
+
+$uni-bg-color: #F4F6FB;
+$uni-bg-color-grey: #EEF2F9;
+$uni-bg-color-hover: #E6EAF4;
+$uni-bg-color-mask: rgba(22, 32, 58, 0.4);
+
+$uni-border-color: #E6EAF4;
+
+$uni-font-size-sm: 12px;
+$uni-font-size-base: 14px;
+$uni-font-size-lg: 16px;
+
+$uni-border-radius-sm: 6px;
+$uni-border-radius-base: 10px;
+$uni-border-radius-lg: 16px;
+
+$uni-spacing-row-sm: 5px;
+$uni-spacing-row-base: 10px;
+$uni-spacing-row-lg: 15px;
+$uni-spacing-col-sm: 4px;
+$uni-spacing-col-base: 8px;
+$uni-spacing-col-lg: 12px;

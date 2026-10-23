@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dailyuse · 群组页（C 方向）头部三个变体</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #E9E6E0; color: #1a1a1a; min-height: 100vh;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header { padding: 44px 24px 4px; text-align: center; }
+  .eyebrow { font-size: 10px; letter-spacing: 3.2px; color: #98938a; text-transform: uppercase; margin-bottom: 12px; }
+  header h1 { font-size: 24px; font-weight: 600; }
+  header p { margin-top: 10px; font-size: 12.5px; color: #6f6a62; line-height: 1.7; }
+  header .hint { margin-top: 4px; font-size: 11px; color: #a19b91; }
+
+  .stage { display: flex; gap: 38px; justify-content: center; flex-wrap: wrap; padding: 36px 24px 80px; align-items: flex-start; }
+  .wrap { width: 320px; }
+
+  .phone {
+    position: relative; width: 320px; height: 700px;
+    border: 9px solid #17181a; border-radius: 44px; overflow: hidden;
+    display: flex; flex-direction: column; background: var(--bg);
+    box-shadow: 0 22px 48px rgba(40,35,28,.18), 0 2px 6px rgba(40,35,28,.08);
+    --bg:#F4F6FB; --fg:#16203A; --muted:#8A94AB; --accent:#3B5BDB;
+    --line:#E6EAF4; --card:#FFFFFF; --radius:14px;
+    --shadow:0 4px 14px rgba(59,91,219,.06);
+    --grad: linear-gradient(135deg,#5C7CFA,#3B5BDB);
+  }
+  .status { flex: 0 0 28px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 10px; color: var(--fg); opacity: .7; }
+  .capsule {
+    position: absolute; top: 34px; right: 14px; z-index: 9;
+    height: 28px; padding: 0 9px; border-radius: 999px;
+    background: rgba(255,255,255,.92); border: 1px solid rgba(0,0,0,.08);
+    display: flex; align-items: center; gap: 7px; font-size: 11px; color: #333;
+  }
+  .navspace { flex: 0 0 44px; }
+
+  .screen { flex: 1; overflow-y: auto; padding: 0 18px 12px; scrollbar-width: none; }
+  .screen::-webkit-scrollbar { display: none; }
+  .hidden { display: none; }
+
+  /* ============ 变体 1：一行头 + 下划线 tab ============ */
+  .hline {
+    display: flex; align-items: center; gap: 8px;
+    padding: 2px 0 12px; border-bottom: 1px solid var(--line);
+  }
+  .hname { font-size: 17px; font-weight: 600; letter-spacing: .3px; }
+  .hmeta { font-size: 10px; color: var(--muted); }
+  .hspace { flex: 1; }
+  .hact {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--card); border: 1px solid var(--line);
+    display: grid; place-items: center; font-size: 13px; color: var(--muted);
+  }
+  .tabs-underline { display: flex; gap: 20px; margin-top: 12px; padding-bottom: 0; }
+  .tabs-underline .t {
+    position: relative; padding: 4px 0 9px; font-size: 12px; color: var(--muted);
+  }
+  .tabs-underline .t.on { color: var(--fg); font-weight: 600; }
+  .tabs-underline .t.on::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0;
+    height: 2px; border-radius: 2px; background: var(--accent);
+  }
+
+  /* ============ 变体 2：极简标题 + 胶囊 tab ============ */
+  .hplain { padding: 2px 0 10px; }
+  .hplain .hname { font-size: 19px; }
+  .hplain .hsub { margin-top: 4px; font-size: 10px; color: var(--muted); }
+  .tabs-pill { display: flex; gap: 6px; margin-top: 10px; }
+  .tabs-pill .t {
+    padding: 6px 13px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--line);
+    font-size: 10.5px; color: var(--muted);
+  }
+  .tabs-pill .t.on { background: var(--accent); border-color: transparent; color: #fff; font-weight: 600; }
+
+  /* ============ 变体 3：标题 + 头像行 + 分段控件 ============ */
+  .hstack { padding: 2px 0 10px; }
+  .hstack .hrow { display: flex; align-items: baseline; gap: 8px; }
+  .hstack .hname { font-size: 17px; }
+  .avrow { display: flex; align-items: center; margin-top: 9px; }
+  .av {
+    width: 26px; height: 26px; border-radius: 50%; margin-right: -7px;
+    display: grid; place-items: center; font-size: 9.5px; color: #fff; font-weight: 600;
+    border: 1.5px solid var(--bg);
+  }
+  .avadd {
+    width: 26px; height: 26px; border-radius: 50%; margin-left: 13px;
+    display: grid; place-items: center; font-size: 13px; color: var(--muted);
+    border: 1px dashed var(--line); background: transparent;
+  }
+  .segmented {
+    display: flex; margin-top: 12px; padding: 3px;
+    background: #E9EEF9; border-radius: 10px;
+  }
+  .segmented .t {
+    flex: 1; text-align: center; padding: 6px 0; border-radius: 8px;
+    font-size: 10.5px; color: var(--muted);
+  }
+  .segmented .t.on { background: #fff; color: var(--fg); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+  /* ============ 内容 ============ */
+  .pane { margin-top: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 13px; }
+  .card + .card { margin-top: 9px; }
+
+  .item { display: flex; align-items: center; gap: 9px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 11.5px; }
+  .item:last-child { border-bottom: none; }
+  .ck { width: 16px; height: 16px; border-radius: 5px; border: 1.4px solid var(--line); flex: 0 0 16px; display: grid; place-items: center; font-size: 9px; color: #fff; }
+  .item.done .ck { background: var(--accent); border-color: transparent; }
+  .item.done .tx { color: var(--muted); text-decoration: line-through; }
+  .tx { flex: 1; }
+  .who { font-size: 9px; color: var(--muted); }
+
+  .money { display: flex; align-items: baseline; gap: 4px; }
+  .money .cur { font-size: 11px; color: var(--muted); }
+  .money .amt { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .money .note { margin-left: auto; font-size: 9.5px; color: var(--muted); }
+  .split { display: flex; gap: 14px; margin-top: 8px; font-size: 10px; color: var(--muted); }
+
+  .evt { display: flex; gap: 12px; align-items: center; }
+  .evt .day {
+    width: 44px; flex: 0 0 44px; text-align: center;
+    background: #EEF2FC; border-radius: 10px; padding: 6px 0;
+  }
+  .evt .d1 { font-size: 9px; color: var(--muted); }
+  .evt .d2 { margin-top: 2px; font-size: 16px; font-weight: 600; color: var(--accent); }
+  .evt .info { flex: 1; }
+  .evt .et { font-size: 12.5px; font-weight: 600; }
+  .evt .es { margin-top: 4px; font-size: 10px; color: var(--muted); }
+
+  .emptyline { padding: 6px 0; font-size: 11px; color: var(--muted); }
+
+  .tabbar { flex: 0 0 56px; display: flex; align-items: center; border-top: 1px solid var(--line); background: var(--bg); }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9.5px; color: var(--muted); }
+  .tab.on { color: var(--accent); font-weight: 600; }
+  .tab svg { width: 18px; height: 18px; }
+
+  .meta { padding: 18px 4px 0; }
+  .mname { font-size: 15px; font-weight: 600; }
+  .mtag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #dcd8d0; color: #57534b; font-size: 10.5px; font-weight: 400; }
+  .mdesc { margin-top: 9px; font-size: 12px; line-height: 1.7; color: #6f6a62; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">DAILYUSE · GROUP · C</div>
+  <h1>群组页 · 头部三个变体</h1>
+  <p>C 的分栏结构不变，只把顶部大卡换掉。点 tab 可切换内容。</p>
+  <p class="hint">视觉稿；定一个我就开始接后端</p>
+</header>
+
+<main class="stage" id="stage"></main>
+
+<script>
+const I = {
+  grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>',
+  group: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3"/><path d="M3 19c0-3.2 2.6-5 6-5s6 1.8 6 5"/><path d="M16 6.2a3 3 0 0 1 0 5.6M17.5 14.4c2.2.6 3.5 2.2 3.5 4.6"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.8 3-5.8 7-5.8s7 2 7 5.8"/></svg>'
+};
+
+const MEMBERS = [
+  { n: '我', c: '#5C7CFA' },
+  { n: '妈', c: '#22B8CF' },
+  { n: '爸', c: '#51CF66' }
+];
+
+const TABS = ['待办', '清单', '记账', '活动'];
+
+/* ---------- 内容 ---------- */
+function paneTodo() {
+  return `
+  <div class="card">
+    <div class="item"><span class="ck"></span><span class="tx">交水电费</span><span class="who">我</span></div>
+    <div class="item"><span class="ck"></span><span class="tx">买周末的菜</span><span class="who">妈</span></div>
+    <div class="item done"><span class="ck">✓</span><span class="tx">取快递</span><span class="who">爸</span></div>
+    <div class="item"><span class="ck"></span><span class="tx">预约体检</span><span class="who">爸</span></div>
+  </div>
+  <div class="emptyline">＋ 添加一件集体待办</div>`;
+}
+
+function paneList() {
+  return `
+  <div class="card">
+    <div class="item done"><span class="ck">✓</span><span class="tx">牛奶</span><span class="who">妈</span></div>
+    <div class="item"><span class="ck"></span><span class="tx">鸡蛋</span><span class="who">我</span></div>
+    <div class="item"><span class="ck"></span><span class="tx">面包</span><span class="who">我</span></div>
+    <div class="item"><span class="ck"></span><span class="tx">洗衣液</span><span class="who">爸</span></div>
+  </div>
+  <div class="emptyline">＋ 添加一项，全家同步</div>`;
+}
+
+function paneMoney() {
+  return `
+  <div class="card">
+    <div class="money"><span class="cur">¥</span><span class="amt">320</span><span class="note">本周总支出</span></div>
+    <div class="split"><span>我垫付 ¥128</span><span>待收 ¥64</span></div>
+  </div>
+  <div class="card">
+    <div class="item"><span class="ck"></span><span class="tx">超市采购</span><span class="who">¥128 · 我</span></div>
+    <div class="item"><span class="ck"></span><span class="tx">外卖</span><span class="who">¥56 · 妈</span></div>
+    <div class="item"><span class="ck"></span><span class="tx">水果</span><span class="who">¥136 · 爸</span></div>
+  </div>
+  <div class="emptyline">＋ 记一笔，自动算均摊</div>`;
+}
+
+function paneEvent() {
+  return `
+  <div class="card">
+    <div class="evt">
+      <div class="day"><div class="d1">10 月</div><div class="d2">24</div></div>
+      <div class="info">
+        <div class="et">周六露营</div>
+        <div class="es">集合 9:00 · 城郊营地 · 3 人参加</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="evt">
+      <div class="day"><div class="d1">11 月</div><div class="d2">03</div></div>
+      <div class="info">
+        <div class="et">奶奶生日</div>
+        <div class="es">全天 · 在家 · 2 人参加</div>
+      </div>
+    </div>
+  </div>
+  <div class="emptyline">＋ 新建一个家庭活动</div>`;
+}
+
+const PANES = { 待办: paneTodo, 清单: paneList, 记账: paneMoney, 活动: paneEvent };
+
+/* ---------- 变体头部 ---------- */
+function head1() {
+  return `
+  <div class="hline">
+    <span class="hname">一家人</span>
+    <span class="hmeta">3 人</span>
+    <span class="hspace"></span>
+    <div class="hact">＋</div>
+    <div class="hact">⚙</div>
+  </div>
+  <div class="tabs-underline">
+    ${TABS.map((t, i) => `<div class="t ${i === 0 ? 'on' : ''}" data-t="${t}">${t}</div>`).join('')}
+  </div>`;
+}
+
+function head2() {
+  return `
+  <div class="hplain">
+    <div class="hname">一家人</div>
+    <div class="hsub">3 位成员 · 本周 2 / 4 完成</div>
+  </div>
+  <div class="tabs-pill">
+    ${TABS.map((t, i) => `<div class="t ${i === 0 ? 'on' : ''}" data-t="${t}">${t}</div>`).join('')}
+  </div>`;
+}
+
+function head3() {
+  return `
+  <div class="hstack">
+    <div class="hrow"><span class="hname">一家人</span><span class="hmeta">本周 2 / 4</span></div>
+    <div class="avrow">
+      ${MEMBERS.map(m => `<span class="av" style="background:${m.c}">${m.n}</span>`).join('')}
+      <span class="avadd">＋</span>
+    </div>
+  </div>
+  <div class="segmented">
+    ${TABS.map((t, i) => `<div class="t ${i === 0 ? 'on' : ''}" data-t="${t}">${t}</div>`).join('')}
+  </div>`;
+}
+
+const VARIANTS = [
+  {
+    id: 'v1', name: '变体 1 · 一行头', tag: '最紧凑',
+    desc: '群名 + 人数 + 两个圆形按钮，一行解决，下面下划线 tab。头部高度不到原来大卡的 1/3。',
+    head: head1
+  },
+  {
+    id: 'v2', name: '变体 2 · 极简标题', tag: '最轻',
+    desc: '只有标题和一行小字，tab 用胶囊。没有任何卡片感，信息密度最高。',
+    head: head2
+  },
+  {
+    id: 'v3', name: '变体 3 · 头像行', tag: '最有家庭感',
+    desc: '标题 + 成员头像叠放 + 邀请，tab 用分段控件。不用大色块，也能一眼看出「这是谁的家」。',
+    head: head3
+  }
+];
+
+function phone(v) {
+  return `
+  <section class="wrap">
+    <div class="phone" id="phone-${v.id}">
+      <div class="status"><span>20:32</span><span>●●●●</span></div>
+      <div class="capsule"><span>···</span><span>⊙</span></div>
+      <div class="navspace"></div>
+
+      <div class="screen">
+        ${v.head()}
+        ${TABS.map((t, i) => `
+          <div class="pane ${i === 0 ? '' : 'hidden'}" data-p="${t}">${PANES[t]()}</div>
+        `).join('')}
+      </div>
+
+      <div class="tabbar">
+        <div class="tab">${I.grid}<span>工具</span></div>
+        <div class="tab on">${I.group}<span>群组</span></div>
+        <div class="tab">${I.user}<span>我的</span></div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="mname">${v.name}<span class="mtag">${v.tag}</span></div>
+      <p class="mdesc">${v.desc}</p>
+    </div>
+  </section>`;
+}
+
+document.getElementById('stage').innerHTML = VARIANTS.map(phone).join('');
+
+// tab 切换
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('.t');
+  if (!t || !t.dataset.t) return;
+  const phoneEl = t.closest('.phone');
+  if (!phoneEl) return;
+
+  const name = t.dataset.t;
+  phoneEl.querySelectorAll('.t').forEach(x => x.classList.toggle('on', x.dataset.t === name));
+  phoneEl.querySelectorAll('.pane').forEach(p => p.classList.toggle('hidden', p.dataset.p !== name));
+});
+</script>
+</body>
+</html>

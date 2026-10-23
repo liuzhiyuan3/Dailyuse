@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dailyuse · 界面方向 v4</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #E9E6E0; color: #1a1a1a; min-height: 100vh;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header { padding: 48px 24px 4px; text-align: center; }
+  .eyebrow { font-size: 10px; letter-spacing: 3.4px; color: #98938a; text-transform: uppercase; margin-bottom: 12px; }
+  header h1 { font-size: 25px; font-weight: 600; letter-spacing: .6px; }
+  header p { margin-top: 10px; font-size: 12.5px; color: #6f6a62; line-height: 1.7; }
+  header .hint { margin-top: 4px; font-size: 11px; color: #a19b91; }
+
+  .stage { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; padding: 40px 24px 80px; align-items: flex-start; }
+  .wrap { width: 320px; }
+
+  /* ================= 手机 ================= */
+  .phone {
+    position: relative; width: 320px; height: 680px;
+    border: 9px solid #17181a; border-radius: 44px; overflow: hidden;
+    display: flex; flex-direction: column; background: var(--bg);
+    box-shadow: 0 22px 48px rgba(40,35,28,.18), 0 2px 6px rgba(40,35,28,.08);
+    --bg:#fff; --fg:#111; --muted:#8a8a8a; --accent:#4F6EF7; --accent2:#9DB2FF;
+    --line:#e8e8e8; --card:#fff; --radius:20px; --shadow:none;
+    --grad: linear-gradient(135deg, #6C8BFF, #4F6EF7);
+    --title-font: "PingFang SC", sans-serif;
+  }
+  .phone[data-theme="cream"] {
+    --bg:#FDF8F3; --fg:#2B2320; --muted:#9C8F86; --accent:#F2703C; --accent2:#FFB088;
+    --line:#F0E5DA; --card:#FFFFFF; --radius:22px; --shadow:0 6px 20px rgba(240,112,60,.08);
+    --grad: linear-gradient(135deg, #FF8A5B, #F2703C);
+  }
+  .phone[data-theme="azure"] {
+    --bg:#F4F6FB; --fg:#16203A; --muted:#8A94AB; --accent:#3B5BDB; --accent2:#5C7CFA;
+    --line:#E6EAF4; --card:#FFFFFF; --radius:20px; --shadow:0 6px 20px rgba(59,91,219,.08);
+    --grad: linear-gradient(135deg, #5C7CFA, #3B5BDB);
+  }
+  .phone[data-theme="ink"] {
+    --bg:#F3F1EA; --fg:#1E2B24; --muted:#8B8B7E; --accent:#2C4A3B; --accent2:#C9A227;
+    --line:#E3DFD2; --card:#FBF9F2; --radius:16px; --shadow:0 4px 16px rgba(44,74,59,.07);
+    --grad: linear-gradient(135deg, #3A5C4B, #22392E);
+    --title-font: "Songti SC", "STSong", serif;
+  }
+
+  .status { flex: 0 0 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 10px; color: var(--fg); opacity: .7; }
+  .screen { flex: 1; overflow-y: auto; padding: 0 18px 10px; scrollbar-width: none; }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ================= 通用 ================= */
+  .sec { display: flex; justify-content: space-between; align-items: baseline; margin: 15px 0 8px; font-size: 10px; letter-spacing: 1.1px; color: var(--muted); }
+  .sec .more { letter-spacing: 0; color: var(--accent); font-size: 10.5px; cursor: pointer; }
+
+  .hero { display: flex; align-items: flex-start; justify-content: space-between; padding-top: 14px; }
+  .hello { font-family: var(--title-font); font-size: 20px; color: var(--fg); letter-spacing: .5px; line-height: 1.3; }
+  .date { margin-top: 4px; font-size: 10px; color: var(--muted); }
+  .hr { display: flex; align-items: center; gap: 8px; }
+  .wpill {
+    display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--line); font-size: 10.5px; color: var(--fg);
+    box-shadow: var(--shadow);
+  }
+  .wpill svg { width: 13px; height: 13px; color: var(--accent2); }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--grad); color: #fff; font-size: 12px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+
+  /* ================= 工具宫格 ================= */
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+  .cell {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; padding: 11px 4px; cursor: pointer; background: var(--card);
+    border: 1px solid var(--line); border-radius: calc(var(--radius) - 4px); box-shadow: var(--shadow);
+    transition: transform .18s cubic-bezier(.2,.8,.2,1);
+  }
+  .cell:active { transform: scale(.96); }
+  .cell svg { width: 19px; height: 19px; color: var(--accent); }
+  .cell .label { font-size: 10.5px; color: var(--fg); }
+  .cell .badge { position: absolute; top: 7px; right: 8px; min-width: 14px; height: 14px; padding: 0 4px; border-radius: 7px; background: var(--accent); color: #fff; font-size: 8.5px; display: grid; place-items: center; }
+  @keyframes jiggle { 0%,100%{transform:rotate(-1.1deg)} 50%{transform:rotate(1.1deg)} }
+  .grid.editing .cell { animation: jiggle .3s ease-in-out infinite; }
+  .grid.editing .cell:nth-child(2n) { animation-delay: .15s; }
+  .minus { position: absolute; top: -6px; right: -6px; z-index: 2; width: 18px; height: 18px; border-radius: 50%; background: #2A2A2A; color: #fff; font-size: 12px; display: grid; place-items: center; }
+  .cell.add { border-style: dashed; background: transparent; box-shadow: none; }
+  .cell.add .plus { font-size: 18px; color: var(--muted); font-weight: 300; }
+  .cell.add .label { color: var(--muted); font-size: 10px; }
+
+  /* ================= 今日概览（单块） ================= */
+  .summary { display: flex; align-items: center; padding: 10px 4px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .sitem { flex: 1; text-align: center; padding: 0 4px; }
+  .sitem .k { font-size: 8.5px; color: var(--muted); letter-spacing: .2px; }
+  .sitem .v { margin-top: 4px; font-family: var(--title-font); font-size: 14px; color: var(--fg); font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .sitem .v small { font-size: 8.5px; color: var(--muted); margin-left: 1px; }
+  .sdiv { width: 1px; height: 24px; background: var(--line); }
+
+  /* ================= 群组卡 ================= */
+  .groups { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .groups::-webkit-scrollbar { display: none; }
+  .gcard {
+    position: relative; flex: 0 0 146px; height: 92px; border-radius: var(--radius);
+    background: var(--grad); color: #fff; padding: 11px 12px; cursor: pointer;
+    display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0,0,0,.14);
+  }
+  .gcard::after { content: ''; position: absolute; right: -18px; top: -22px; width: 78px; height: 78px; border-radius: 50%; background: rgba(255,255,255,.14); }
+  .gcard .gname { font-size: 13px; font-weight: 600; }
+  .gcard .gsub { font-size: 9.5px; opacity: .82; margin-top: 3px; }
+  .gcard .gfoot { display: flex; align-items: center; justify-content: space-between; }
+  .avs { display: flex; }
+  .avs .a { width: 20px; height: 20px; border-radius: 50%; margin-right: -6px; border: 1.5px solid rgba(255,255,255,.9); display: grid; place-items: center; font-size: 8px; font-weight: 600; background: rgba(255,255,255,.28); }
+  .gcard .pct { font-size: 9.5px; opacity: .9; }
+  .gadd { flex: 0 0 82px; height: 92px; border-radius: var(--radius); border: 1px dashed var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: var(--muted); font-size: 9.5px; cursor: pointer; }
+  .gadd span:first-child { font-size: 20px; font-weight: 300; }
+
+  /* ================= 动态 ================= */
+  .feed { border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 4px 14px; }
+  .fitem { display: flex; gap: 9px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .fitem:last-child { border-bottom: none; }
+  .fdot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 5px; flex: 0 0 6px; }
+  .fdot.gray { background: var(--line); }
+  .ftxt { flex: 1; font-size: 11px; line-height: 1.5; color: var(--fg); }
+  .ftxt b { font-weight: 600; }
+  .ftime { font-size: 9.5px; color: var(--muted); white-space: nowrap; margin-top: 2px; }
+
+  /* ================= 群组详情 ================= */
+  .navrow { display: flex; align-items: center; gap: 9px; padding: 12px 0 2px; }
+  .back { font-size: 21px; line-height: 1; cursor: pointer; color: var(--fg); padding: 0 3px; }
+  .navtitle { font-family: var(--title-font); font-size: 16px; color: var(--fg); }
+  .navsp { margin-left: auto; font-size: 10.5px; color: var(--muted); }
+
+  .ghead { margin-top: 12px; padding: 16px; border-radius: var(--radius); background: var(--grad); color: #fff; position: relative; overflow: hidden; box-shadow: 0 10px 24px rgba(0,0,0,.16); }
+  .ghead::after { content: ''; position: absolute; right: -28px; bottom: -36px; width: 108px; height: 108px; border-radius: 50%; background: rgba(255,255,255,.12); }
+  .ghead .gt { font-family: var(--title-font); font-size: 18px; letter-spacing: .5px; }
+  .ghead .gd { margin-top: 5px; font-size: 10px; opacity: .82; }
+  .ghead .invite { display: inline-flex; align-items: center; margin-top: 14px; font-size: 9.5px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.3); }
+
+  .memrow { display: flex; gap: 14px; margin-top: 12px; padding: 14px 12px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .mem { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .mem .m { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; color: #fff; }
+  .mem .n { font-size: 9.5px; color: var(--muted); }
+  .mem.add .m { background: transparent; border: 1px dashed var(--line); color: var(--muted); }
+
+  .ring-card { display: flex; align-items: center; gap: 15px; margin-top: 12px; padding: 14px 16px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .ring { position: relative; width: 58px; height: 58px; flex: 0 0 58px; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; font-weight: 600; color: var(--fg); }
+  .ring-info { flex: 1; }
+  .ring-info .rt { font-size: 12.5px; color: var(--fg); font-weight: 600; }
+  .ring-info .rs { margin-top: 4px; font-size: 10px; color: var(--muted); line-height: 1.5; }
+
+  .bars { display: flex; align-items: flex-end; gap: 5px; height: 40px; margin-top: 8px; }
+  .bars .b { flex: 1; border-radius: 3px 3px 2px 2px; background: var(--accent); opacity: .35; }
+  .bars .b.on { opacity: 1; }
+
+  .todo { display: flex; align-items: center; gap: 11px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .todo:last-of-type { border-bottom: none; }
+  .check { width: 18px; height: 18px; border-radius: 6px; flex: 0 0 18px; border: 1.5px solid var(--line); display: grid; place-items: center; color: transparent; font-size: 10px; }
+  .todo.done .check { background: var(--accent); border-color: transparent; color: #fff; }
+  .todo .tt { flex: 1; font-size: 12px; color: var(--fg); }
+  .todo.done .tt { color: var(--muted); text-decoration: line-through; }
+  .todo .who { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 8px; font-weight: 600; color: #fff; }
+
+  .remind { display: flex; align-items: center; gap: 9px; margin-top: 12px; padding: 12px 14px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--line); font-size: 11.5px; color: var(--fg); }
+  .remind svg { width: 15px; height: 15px; color: var(--accent); }
+  .remind .rtime { margin-left: auto; font-size: 10px; color: var(--muted); }
+  .addbtn { margin-top: 14px; width: 100%; padding: 13px; border-radius: var(--radius); background: var(--grad); color: #fff; border: none; font-size: 12.5px; font-weight: 600; cursor: pointer; letter-spacing: .5px; }
+
+  /* ================= 待办页 ================= */
+  .seg { display: flex; gap: 6px; margin-top: 12px; }
+  .seg .s { padding: 6px 13px; border-radius: 999px; font-size: 10.5px; color: var(--muted); background: transparent; border: 1px solid transparent; cursor: pointer; }
+  .seg .s.on { background: var(--accent); color: #fff; }
+
+  .task { display: flex; align-items: flex-start; gap: 11px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+  .task:last-child { border-bottom: none; }
+  .task .ck { width: 19px; height: 19px; border-radius: 50%; flex: 0 0 19px; border: 1.5px solid var(--line); margin-top: 1px; display: grid; place-items: center; color: transparent; font-size: 10px; }
+  .task.done .ck { background: var(--accent); border-color: transparent; color: #fff; }
+  .task .body { flex: 1; min-width: 0; }
+  .task .t1 { font-size: 12.5px; color: var(--fg); line-height: 1.4; }
+  .task.done .t1 { color: var(--muted); text-decoration: line-through; }
+  .task .meta { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .tag { font-size: 9px; padding: 2px 7px; border-radius: 5px; background: var(--line); color: var(--muted); }
+  .tag.p-high { background: rgba(242,112,60,.14); color: #D2542A; }
+  .tag.p-mid { background: rgba(224,168,0,.16); color: #A87B00; }
+  .tag.p-low { background: var(--line); color: var(--muted); }
+  .task .time { font-size: 9px; color: var(--muted); }
+
+  .inputbar { position: sticky; bottom: 0; display: flex; gap: 8px; padding: 10px 0 4px; background: linear-gradient(to top, var(--bg) 65%, transparent); }
+  .inputbar .fake { flex: 1; padding: 11px 14px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: 11.5px; color: var(--muted); box-shadow: var(--shadow); }
+  .inputbar .plus { width: 40px; height: 40px; border-radius: 50%; background: var(--grad); color: #fff; display: grid; place-items: center; font-size: 19px; font-weight: 300; box-shadow: 0 6px 14px rgba(0,0,0,.16); }
+
+  /* ================= tab ================= */
+  .tabbar { flex: 0 0 58px; display: flex; align-items: center; border-top: 1px solid var(--line); background: var(--bg); }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; color: var(--muted); cursor: pointer; }
+  .tab.on { color: var(--accent); font-weight: 600; }
+  .tab svg { width: 19px; height: 19px; }
+
+  /* ================= 抽屉 ================= */
+  .mask { position: absolute; inset: 0; z-index: 9; background: rgba(26,22,17,.32); opacity: 0; pointer-events: none; transition: opacity .26s; }
+  .mask.open { opacity: 1; pointer-events: auto; }
+  .drawer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--card); border-radius: 22px 22px 0 0; padding: 20px 18px 28px; transform: translateY(112%); transition: transform .36s cubic-bezier(.2,.85,.25,1); box-shadow: 0 -12px 34px rgba(0,0,0,.16); }
+  .drawer.open { transform: translateY(0); }
+  .dhead { display: flex; justify-content: space-between; align-items: baseline; }
+  .dhead .t { font-family: var(--title-font); font-size: 15px; color: var(--fg); }
+  .dhead .done { font-size: 11px; color: var(--accent); cursor: pointer; font-weight: 600; }
+  .dsub { margin-top: 6px; font-size: 10px; color: var(--muted); }
+  .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 8px; margin-top: 18px; }
+  .tool { display: flex; flex-direction: column; align-items: center; gap: 7px; cursor: pointer; }
+  .tool .ico { width: 42px; height: 42px; border-radius: 13px; border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); transition: .2s; }
+  .tool .ico svg { width: 20px; height: 20px; }
+  .tool.on .ico { background: var(--accent); border-color: transparent; color: #fff; }
+  .tool .tname { font-size: 10.5px; color: var(--muted); }
+  .tool.on .tname { color: var(--fg); }
+
+  .edit { padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font-size: 10.5px; cursor: pointer; }
+  .edit.on { background: var(--accent); color: #fff; border-color: transparent; }
+
+  /* ================= 说明 ================= */
+  .meta { padding: 20px 4px 0; }
+  .mname { font-size: 15px; font-weight: 600; }
+  .mtag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #dcd8d0; color: #57534b; font-size: 10.5px; vertical-align: middle; font-weight: 400; }
+  .mdesc { margin-top: 10px; font-size: 12px; line-height: 1.75; color: #6f6a62; }
+  .swatches { display: flex; gap: 6px; margin-top: 13px; }
+  .sw { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(0,0,0,.08); }
+  .mfont { margin-top: 10px; font-size: 10.5px; color: #a19b91; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">DAILYUSE · INTERFACE V4</div>
+  <h1>界面方向 · 工具 + 群组 + 待办</h1>
+  <p>点「待办」进列表页，点群组卡进协作页；点「编辑」可增减工具。</p>
+  <p class="hint">视觉稿；定稿后落到 uni-app 页面</p>
+</header>
+
+<main class="stage" id="stage"></main>
+
+<script>
+const ICONS = {
+  todo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 12.5l2.8 2.8L16 9.5"/></svg>',
+  note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h8.5L19 8v12.5H6z"/><path d="M14 3.5V8h4.5"/><path d="M9 12.5h7M9 16h5"/></svg>',
+  wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10.5h18"/><circle cx="16.5" cy="14.5" r="1.1" fill="currentColor" stroke="none"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+  news: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M7 9h10M7 12.5h10M7 16h6"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.8 3-5.8 7-5.8s7 2 7 5.8"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg>',
+  timer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.8l2.4 2.4"/><path d="M9 2.5h6"/></svg>',
+  water: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z"/></svg>',
+  tool: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>',
+  group: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3"/><path d="M3 19c0-3.2 2.6-5 6-5s6 1.8 6 5"/><path d="M16 6.2a3 3 0 0 1 0 5.6M17.5 14.4c2.2.6 3.5 2.2 3.5 4.6"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>'
+};
+
+const TOOLS = [
+  { id: 'todo', name: '待办', icon: 'todo' },
+  { id: 'note', name: '便签', icon: 'note' },
+  { id: 'wallet', name: '记账', icon: 'wallet' },
+  { id: 'calendar', name: '倒数日', icon: 'calendar' },
+  { id: 'news', name: '资讯', icon: 'news' },
+  { id: 'sun', name: '天气', icon: 'sun' },
+  { id: 'timer', name: '番茄钟', icon: 'timer' },
+  { id: 'water', name: '喝水', icon: 'water' }
+];
+
+const GROUPS = {
+  family: {
+    id: 'family', name: '一家人', sub: '本周 5 / 8 完成', pct: '62%',
+    members: [{ n: '我', c: '#F2703C' }, { n: '妈', c: '#4C9AFF' }, { n: '爸', c: '#34C759' }],
+    todos: [
+      { t: '交水电费', done: true, who: '我', c: '#F2703C' },
+      { t: '买周末的菜', done: true, who: '妈', c: '#4C9AFF' },
+      { t: '给奶奶打电话', done: false, who: '我', c: '#F2703C' },
+      { t: '预约体检', done: false, who: '爸', c: '#34C759' }
+    ]
+  },
+  camp: {
+    id: 'camp', name: '周末露营', sub: '周六出发前', pct: '40%',
+    members: [{ n: '我', c: '#F2703C' }, { n: '哲', c: '#AF52DE' }, { n: '林', c: '#FF9500' }],
+    todos: [
+      { t: '订营地', done: true, who: '哲', c: '#AF52DE' },
+      { t: '买炭火', done: false, who: '我', c: '#F2703C' },
+      { t: '确认天气', done: false, who: '林', c: '#FF9500' }
+    ]
+  }
+};
+
+const TASKS = [
+  { t: '写周报', done: false, tag: '工作', pri: 'high', time: '今天 18:00' },
+  { t: '交水电费', done: true, tag: '家庭', pri: 'mid', time: '今天' },
+  { t: '买牛奶和面包', done: false, tag: '生活', pri: 'low', time: '明天' },
+  { t: '预约体检', done: false, tag: '健康', pri: 'mid', time: '本周' },
+  { t: '给奶奶打电话', done: false, tag: '家庭', pri: 'low', time: '周末' }
+];
+
+const THEMES = [
+  { id: 'cream', name: 'D · 奶油橙', tag: '生活感', desc: '奶油底 + 珊瑚橙渐变。群组卡整块色，有温度。信息密度上来之后仍然不乱。', colors: ['#FDF8F3', '#2B2320', '#F2703C', '#F0E5DA'], font: '全苹方 · 22px 圆角 · 柔和投影' },
+  { id: 'azure', name: 'E · 青黛', tag: '现代效率', desc: '冷白底 + 蓝紫渐变。卡片切分清晰，最适合信息密度高的协作场景。', colors: ['#F4F6FB', '#16203A', '#3B5BDB', '#E6EAF4'], font: '全苹方 · 20px 圆角 · 轻阴影' },
+  { id: 'ink', name: 'F · 墨韵', tag: '东方现代', desc: '米白 + 墨绿 + 金色。衬线标题压住密度，东方感但不素。', colors: ['#F3F1EA', '#1E2B24', '#2C4A3B', '#C9A227'], font: '宋体标题 / 苹方正文 · 16px 圆角' }
+];
+
+const state = {};
+
+function avs(list) {
+  return list.map(m => `<span class="a" style="background:${m.c}">${m.n}</span>`).join('');
+}
+
+function homeHTML(t) {
+  const st = state[t.id];
+  const sel = TOOLS.filter(x => st.selected.includes(x.id));
+
+  let cells = sel.map(x => `
+    <div class="cell" ${st.editing ? `data-act="remove" data-id="${t.id}" data-tool="${x.id}"` : (x.id === 'todo' ? `data-act="open-todo" data-id="${t.id}"` : '')}>
+      ${st.editing ? '<span class="minus">–</span>' : ''}
+      ${ICONS[x.icon]}<span class="label">${x.name}</span>
+      ${x.id === 'todo' ? '<span class="badge">3</span>' : ''}
+    </div>`).join('');
+  if (st.editing) {
+    cells += `<div class="cell add" data-act="open-drawer" data-id="${t.id}"><span class="plus">＋</span><span class="label">添加工具</span></div>`;
+  }
+
+  const gcards = Object.values(GROUPS).map(g => `
+    <div class="gcard" data-act="open-group" data-id="${t.id}" data-group="${g.id}">
+      <div><div class="gname">${g.name}</div><div class="gsub">${g.sub}</div></div>
+      <div class="gfoot"><div class="avs">${avs(g.members)}</div><span class="pct">${g.pct}</span></div>
+    </div>`).join('');
+
+  return `
+    <div class="hero">
+      <div>
+        <div class="hello">晚上好</div>
+        <div class="date">10 月 22 日 · 周四</div>
+      </div>
+      <div class="hr">
+        <span class="wpill">${ICONS.sun}<span>22°</span></span>
+        ${st.editing
+          ? `<button class="edit on" data-act="edit" data-id="${t.id}">完成</button>`
+          : `<button class="edit" data-act="edit" data-id="${t.id}">编辑</button>`}
+      </div>
+    </div>
+
+    <div class="sec"><span>我的工具 · ${sel.length}</span><span class="more">全部</span></div>
+    <div class="grid ${st.editing ? 'editing' : ''}">${cells}</div>
+
+    <div class="sec"><span>今日概览</span><span class="more">详情</span></div>
+    <div class="summary">
+      <div class="sitem"><div class="k">待办</div><div class="v">3<small>件</small></div></div>
+      <div class="sdiv"></div>
+      <div class="sitem"><div class="k">本月支出</div><div class="v">¥1,280</div></div>
+      <div class="sdiv"></div>
+      <div class="sitem"><div class="k">最近倒数</div><div class="v">7<small>天</small></div></div>
+    </div>
+
+    <div class="sec"><span>协作群组</span><span class="more">管理</span></div>
+    <div class="groups">
+      ${gcards}
+      <div class="gadd" data-act="noop" data-id="${t.id}"><span>＋</span><span>创建群组</span></div>
+    </div>
+
+    <div class="sec"><span>动态</span><span class="more">全部</span></div>
+    <div class="feed">
+      <div class="fitem"><span class="fdot"></span><div style="flex:1"><div class="ftxt"><b>妈</b> 完成了「买周末的菜」</div></div><span class="ftime">12:40</span></div>
+      <div class="fitem"><span class="fdot"></span><div style="flex:1"><div class="ftxt"><b>哲</b> 在「周末露营」新增了 2 件待办</div></div><span class="ftime">09:15</span></div>
+      <div class="fitem"><span class="fdot gray"></span><div style="flex:1"><div class="ftxt">你 订阅了关键词「AI」，有 <b>1</b> 条新资讯</div></div><span class="ftime">昨天</span></div>
+      <div class="fitem"><span class="fdot gray"></span><div style="flex:1"><div class="ftxt"><b>爸</b> 预约了周六上午体检</div></div><span class="ftime">周一</span></div>
+    </div>`;
+}
+
+function groupHTML(t, gid) {
+  const g = GROUPS[gid] || GROUPS.family;
+  const done = g.todos.filter(x => x.done).length;
+  const total = g.todos.length;
+  const pct = Math.round(done / total * 100);
+  const dash = 2 * Math.PI * 25;
+  const off = dash * (1 - pct / 100);
+  const bars = [38, 62, 30, 78, 54, 88, 66];
+
+  const todos = g.todos.map(x => `
+    <div class="todo ${x.done ? 'done' : ''}">
+      <span class="check">✓</span><span class="tt">${x.t}</span>
+      <span class="who" style="background:${x.c}">${x.who}</span>
+    </div>`).join('');
+
+  return `
+    <div class="navrow">
+      <span class="back" data-act="back" data-id="${t.id}">‹</span>
+      <span class="navtitle">${g.name}</span>
+      <span class="navsp">设置</span>
+    </div>
+
+    <div class="ghead">
+      <div class="gt">${g.name}</div>
+      <div class="gd">${g.members.length} 位成员 · 本周 ${done}/${total} 完成</div>
+      <span class="invite">＋ 邀请成员</span>
+    </div>
+
+    <div class="memrow">
+      ${g.members.map(m => `<div class="mem"><span class="m" style="background:${m.c}">${m.n}</span><span class="n">${m.n}</span></div>`).join('')}
+      <div class="mem add"><span class="m">＋</span><span class="n">邀请</span></div>
+    </div>
+
+    <div class="ring-card">
+      <div class="ring">
+        <svg width="58" height="58" viewBox="0 0 58 58">
+          <circle cx="29" cy="29" r="25" fill="none" stroke="var(--line)" stroke-width="6"/>
+          <circle cx="29" cy="29" r="25" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${dash}" stroke-dashoffset="${off}"/>
+        </svg>
+        <div class="mid">${pct}%</div>
+      </div>
+      <div class="ring-info">
+        <div class="rt">本周已完成 ${done} / ${total}</div>
+        <div class="rs">还差 ${total - done} 件</div>
+        <div class="bars">${bars.map((h, i) => `<div class="b ${i === 6 ? 'on' : ''}" style="height:${h}%"></div>`).join('')}</div>
+      </div>
+    </div>
+
+    <div class="sec"><span>集体待办</span><span class="more">＋ 添加</span></div>
+    ${todos}
+
+    <div class="remind">
+      ${ICONS.bell}
+      <span>每天 20:00 提醒未完成事项</span>
+      <span class="rtime">已开启</span>
+    </div>
+
+    <button class="addbtn" data-act="noop" data-id="${t.id}">＋ 添加集体待办</button>`;
+}
+
+function todoHTML(t) {
+  const rows = TASKS.map(x => `
+    <div class="task ${x.done ? 'done' : ''}">
+      <span class="ck">✓</span>
+      <div class="body">
+        <div class="t1">${x.t}</div>
+        <div class="meta">
+          <span class="tag">${x.tag}</span>
+          <span class="tag p-${x.pri}">${x.pri === 'high' ? '高' : x.pri === 'mid' ? '中' : '低'}</span>
+          <span class="time">${x.time}</span>
+        </div>
+      </div>
+    </div>`).join('');
+
+  return `
+    <div class="navrow">
+      <span class="back" data-act="back" data-id="${t.id}">‹</span>
+      <span class="navtitle">待办</span>
+      <span class="navsp">筛选</span>
+    </div>
+    <div class="seg">
+      <span class="s on">今天 3</span><span class="s">本周</span><span class="s">全部</span>
+    </div>
+    ${rows}
+    <div class="inputbar">
+      <div class="fake">记一件要做的事…</div>
+      <div class="plus">＋</div>
+    </div>`;
+}
+
+function render(id) {
+  const st = state[id];
+  const t = THEMES.find(x => x.id === id);
+  const screen = document.getElementById('screen-' + id);
+  screen.innerHTML = st.view === 'group' ? groupHTML(t, st.group)
+                    : st.view === 'todo' ? todoHTML(t)
+                    : homeHTML(t);
+
+  const tabs = [
+    { k: 'home', label: '工具', icon: ICONS.tool },
+    { k: 'group', label: '群组', icon: ICONS.group },
+    { k: 'mine', label: '我的', icon: ICONS.user }
+  ];
+  document.getElementById('tab-' + id).innerHTML = tabs.map(x => `
+    <div class="tab ${st.view === x.k ? 'on' : ''}" data-act="tab" data-id="${id}" data-tab="${x.k}">
+      ${x.icon}<span>${x.label}</span>
+    </div>`).join('');
+
+  document.getElementById('tools-' + id).innerHTML = TOOLS.map(x => `
+    <div class="tool ${st.selected.includes(x.id) ? 'on' : ''}" data-act="toggle" data-id="${id}" data-tool="${x.id}">
+      <span class="ico">${ICONS[x.icon]}</span><span class="tname">${x.name}</span>
+    </div>`).join('');
+
+  document.getElementById('drawer-' + id).classList.toggle('open', st.drawer);
+  document.getElementById('mask-' + id).classList.toggle('open', st.drawer);
+}
+
+function phoneHTML(t) {
+  const sw = t.colors.map(c => `<span class="sw" style="background:${c}"></span>`).join('');
+  return `
+  <section class="wrap">
+    <div class="phone" data-theme="${t.id}">
+      <div class="status"><span>9:41</span><span>●●●●</span></div>
+      <div class="screen" id="screen-${t.id}"></div>
+      <div class="tabbar" id="tab-${t.id}"></div>
+
+      <div class="mask" data-act="close-drawer" data-id="${t.id}" id="mask-${t.id}"></div>
+      <div class="drawer" id="drawer-${t.id}">
+        <div class="dhead"><span class="t">选择工具</span><span class="done" data-act="close-drawer" data-id="${t.id}">完成</span></div>
+        <div class="dsub">点一下加入或移除，工具栏实时生效</div>
+        <div class="tools" id="tools-${t.id}"></div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <div class="mname">${t.name}<span class="mtag">${t.tag}</span></div>
+      <p class="mdesc">${t.desc}</p>
+      <div class="swatches">${sw}</div>
+      <div class="mfont">${t.font}</div>
+    </div>
+  </section>`;
+}
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-act]');
+  if (!el) return;
+  const act = el.dataset.act, id = el.dataset.id, tool = el.dataset.tool, tab = el.dataset.tab;
+  if (!id || !state[id]) return;
+  const st = state[id];
+
+  if (act === 'edit') { st.editing = !st.editing; if (!st.editing) st.drawer = false; }
+  else if (act === 'open-drawer') st.drawer = true;
+  else if (act === 'close-drawer') st.drawer = false;
+  else if (act === 'toggle') {
+    if (st.selected.includes(tool)) {
+      if (st.selected.length <= 1) return;
+      st.selected = st.selected.filter(x => x !== tool);
+    } else st.selected.push(tool);
+  }
+  else if (act === 'remove') {
+    if (st.selected.length <= 1) return;
+    st.selected = st.selected.filter(x => x !== tool);
+  }
+  else if (act === 'open-group') { st.view = 'group'; st.group = el.dataset.group; st.editing = false; }
+  else if (act === 'open-todo') { st.view = 'todo'; }
+  else if (act === 'back') { st.view = 'home'; }
+  else if (act === 'tab') {
+    if (tab === 'group') { st.view = 'group'; st.group = 'family'; }
+    else st.view = 'home';
+  }
+  render(id);
+});
+
+THEMES.forEach(t => {
+  state[t.id] = { view: 'home', group: 'family', selected: ['todo', 'note', 'wallet', 'news'], editing: false, drawer: false };
+});
+document.getElementById('stage').innerHTML = THEMES.map(phoneHTML).join('');
+THEMES.forEach(t => render(t.id));
+</script>
+</body>
+</html>

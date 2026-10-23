@@ -1,0 +1,319 @@
+// Dailyuse 数据模型（PostgreSQL）
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== 用户 ==========
+model User {
+  id        String   @id @default(uuid())
+  openid    String   @unique @db.VarChar(64)
+  nickname  String?  @db.VarChar(64)
+  avatarUrl String?  @map("avatar_url") @db.VarChar(512)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  todos      Todo[]
+  notes      Note[]
+  accounts   Account[]
+  countdowns Countdown[]
+  subscribes Subscribe[]
+  reminders  Reminder[]
+  memberships GroupMember[]
+  ownedGroups Group[]      @relation("GroupOwner")
+  groupTodos  GroupTodo[]
+  pushLogs    PushLog[]
+  foods       FoodRecord[]
+
+  @@map("users")
+}
+
+// ========== 工具：待办 ==========
+model Todo {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String   @db.VarChar(200)
+  done      Boolean  @default(false)
+  category  String   @default("default") @db.VarChar(32)
+  dueAt     DateTime? @map("due_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, done, createdAt])
+  @@map("todos")
+}
+
+// ========== 工具：便签 ==========
+model Note {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String   @default("") @db.VarChar(120)
+  content   String   @default("") @db.Text
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, pinned, updatedAt])
+  @@map("notes")
+}
+
+// ========== 工具：记账 ==========
+model Account {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  type       String   @db.VarChar(8) // income | expense
+  amount     Decimal  @db.Decimal(12, 2)
+  category   String   @db.VarChar(32)
+  remark     String   @default("") @db.VarChar(200)
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Date
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@map("accounts")
+}
+
+// ========== 工具：倒数日 ==========
+model Countdown {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  name       String   @db.VarChar(80)
+  targetDate DateTime @map("target_date") @db.Date
+  pinned     Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, targetDate])
+  @@map("countdowns")
+}
+
+// ========== 资讯：关键词订阅 ==========
+model Subscribe {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  keyword    String   @db.VarChar(20)
+  templateId String   @map("template_id") @db.VarChar(64)
+  remain     Int      @default(1)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, keyword])
+  @@map("subscribes")
+}
+
+// ========== 资讯：新闻缓存 ==========
+model NewsItem {
+  id          String    @id @default(uuid())
+  keyword     String    @db.VarChar(20)
+  title       String    @db.VarChar(200)
+  summary     String    @default("") @db.VarChar(400)
+  url         String    @db.Text
+  urlHash     String    @unique @map("url_hash") @db.VarChar(40)
+  source      String    @default("") @db.VarChar(64)
+  publishedAt DateTime? @map("published_at")
+  fetchedAt   DateTime  @default(now()) @map("fetched_at")
+
+  pushLogs PushLog[]
+
+  @@index([keyword, publishedAt])
+  @@map("news_items")
+}
+
+// ========== 推送日志（资讯 + 工具提醒） ==========
+model PushLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  channel    String   @db.VarChar(12) // news | reminder
+  keyword    String?  @db.VarChar(20)
+  newsId     String?  @map("news_id")
+  reminderId String?  @map("reminder_id")
+  status     String   @db.VarChar(16) // sent | failed | skipped
+  sentAt     DateTime @default(now()) @map("sent_at")
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  news NewsItem? @relation(fields: [newsId], references: [id], onDelete: SetNull)
+
+  @@index([userId, sentAt])
+  @@map("push_logs")
+}
+
+// ========== 工具提醒（额度制） ==========
+model Reminder {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  toolType  String   @map("tool_type") @db.VarChar(16) // todo | countdown | group_todo
+  targetId  String   @map("target_id")
+  remindAt  DateTime @map("remind_at")
+  remain    Int      @default(1)
+  status    String   @default("pending") @db.VarChar(12) // pending | sent | expired | canceled
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, remindAt])
+  @@map("reminders")
+}
+
+// ========== 协作群组 ==========
+model Group {
+  id         String   @id @default(uuid())
+  name       String   @db.VarChar(40)
+  ownerId    String   @map("owner_id")
+  inviteCode String   @unique @map("invite_code") @db.VarChar(16)
+  // 群内工具配置（JSON 数组）：[{ key, label, kind }]
+  tools      String   @default("") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  owner   User          @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members GroupMember[]
+  todos   GroupTodo[]
+  items    GroupListItem[]
+  expenses GroupExpense[]
+  events   GroupEvent[]
+  scores   GroupScore[]
+  orders   GroupOrder[]
+
+  @@map("groups")
+}
+
+// ========== 群组：购物清单 ==========
+model GroupListItem {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  // 属于哪个工具（预设 list/notice/... 或自定义工具 key）
+  toolKey   String   @default("list") @map("tool_key") @db.VarChar(40)
+  content   String   @db.VarChar(120)
+  // 副信息：链接地址 / 单号 / 做法
+  note      String   @default("") @db.VarChar(300)
+  // 公告等需要置顶
+  pinned    Boolean  @default(false)
+  done      Boolean  @default(false)
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, toolKey, done, createdAt])
+  @@map("group_list_items")
+}
+
+// ========== 群组：AA 记账 ==========
+model GroupExpense {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  title     String   @db.VarChar(120)
+  amount    Decimal  @db.Decimal(12, 2)
+  payerId   String   @map("payer_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@map("group_expenses")
+}
+
+// ========== 群组：活动 ==========
+model GroupEvent {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  title     String   @db.VarChar(120)
+  startAt   DateTime @map("start_at")
+  place     String   @default("") @db.VarChar(120)
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, startAt])
+  @@map("group_events")
+}
+
+// ========== 群组：计分 ==========
+model GroupScore {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  userId    String?  @map("user_id")
+  delta     Int
+  reason    String   @default("") @db.VarChar(80)
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@map("group_scores")
+}
+
+// ========== 群组：点餐 ==========
+model GroupOrder {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  content   String   @db.VarChar(80)
+  done      Boolean  @default(false)
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, done, createdAt])
+  @@map("group_orders")
+}
+
+model GroupMember {
+  id       String   @id @default(uuid())
+  groupId  String   @map("group_id")
+  userId   String   @map("user_id")
+  role     String   @default("member") @db.VarChar(12) // owner | member
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+model GroupTodo {
+  id         String    @id @default(uuid())
+  groupId    String    @map("group_id")
+  title      String    @db.VarChar(200)
+  done       Boolean   @default(false)
+  assigneeId String?   @map("assignee_id")
+  dueAt      DateTime? @map("due_at")
+  createdBy  String    @map("created_by")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  assignee User? @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, done])
+  @@map("group_todos")
+}
+
+// ========== 美食记录 ==========
+model FoodRecord {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  kind      String   @db.VarChar(8) // ate 今天吃了 | want 想吃什么
+  content   String   @db.VarChar(120)
+  note      String   @default("") @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind, createdAt])
+  @@map("food_records")
+}

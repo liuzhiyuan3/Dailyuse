@@ -1,0 +1,18 @@
+{
+  "name": "Dailyuse",
+  "appid": "",
+  "description": "日常工具 + 协作群组 + 关键词资讯",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "wxb5e5511df68c3785",
+    "setting": {
+      "urlCheck": false,
+      "es6": true,
+      "minified": true
+    },
+    "usingComponents": true
+  },
+  "vueVersion": "3"
+}

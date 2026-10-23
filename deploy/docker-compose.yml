@@ -1,0 +1,43 @@
+name: dailyuse
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: dailyuse-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dailyuse}
+      POSTGRES_USER: ${POSTGRES_USER:-dailyuse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 deploy/.env 中设置}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dailyuse} -d ${POSTGRES_DB:-dailyuse}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../server
+    container_name: dailyuse-api
+    environment:
+      PORT: 3000
+      TZ: ${TZ:-Asia/Shanghai}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dailyuse}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-dailyuse}
+      JWT_SECRET: ${JWT_SECRET:?请在 deploy/.env 中设置}
+      WX_APPID: ${WX_APPID:-}
+      WX_SECRET: ${WX_SECRET:-}
+      WX_TEMPLATE_ID: ${WX_TEMPLATE_ID:-}
+      NEWS_API_URL: ${NEWS_API_URL:-}
+      NEWS_API_KEY: ${NEWS_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    # 只绑本机，公网流量统一走已有 nginx
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

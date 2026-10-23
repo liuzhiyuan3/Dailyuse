@@ -1,0 +1,44 @@
+/* Dailyuse 设计 token —— E 青黛（现代效率） */
+page {
+  --bg: #F4F6FB;
+  --fg: #16203A;
+  --muted: #8A94AB;
+  --accent: #3B5BDB;
+  --accent-2: #5C7CFA;
+  --line: #E6EAF4;
+  --card: #FFFFFF;
+  --radius: 16px;
+  --shadow: 0 6px 20px rgba(59, 91, 219, 0.08);
+  --grad: linear-gradient(135deg, #5C7CFA, #3B5BDB);
+
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+.sec-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 30rpx 0 16rpx;
+  font-size: 20rpx;
+  letter-spacing: 2rpx;
+  color: var(--muted);
+}
+
+.sec-title .more {
+  font-size: 20rpx;
+  letter-spacing: 0;
+  color: var(--accent);
+}
+
+.card {
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,119 @@
+{
+  "easycom": {
+    "autoscan": true
+  },
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "日常使用"
+      }
+    },
+    {
+      "path": "pages/todo/index",
+      "style": {
+        "navigationBarTitleText": "待办"
+      }
+    },
+    {
+      "path": "pages/note/index",
+      "style": {
+        "navigationBarTitleText": "便签"
+      }
+    },
+    {
+      "path": "pages/account/index",
+      "style": {
+        "navigationBarTitleText": "记账"
+      }
+    },
+    {
+      "path": "pages/countdown/index",
+      "style": {
+        "navigationBarTitleText": "倒数日"
+      }
+    },
+    {
+      "path": "pages/food/index",
+      "style": {
+        "navigationBarTitleText": "美食记录"
+      }
+    },
+    {
+      "path": "pages/news/index",
+      "style": {
+        "navigationBarTitleText": "资讯",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/news/detail",
+      "style": {
+        "navigationBarTitleText": "资讯详情"
+      }
+    },
+    {
+      "path": "pages/news/subscribes",
+      "style": {
+        "navigationBarTitleText": "我的订阅"
+      }
+    },
+    {
+      "path": "pages/group/detail",
+      "style": {
+        "navigationBarTitleText": "群组"
+      }
+    },
+    {
+      "path": "pages/group/index",
+      "style": {
+        "navigationBarTitleText": "我的群组"
+      }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/mine/reminders",
+      "style": {
+        "navigationBarTitleText": "提醒"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#8A94AB",
+    "selectedColor": "#3B5BDB",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "工具",
+        "iconPath": "static/tabbar/tools.png",
+        "selectedIconPath": "static/tabbar/tools-active.png"
+      },
+      {
+        "pagePath": "pages/todo/index",
+        "text": "待办",
+        "iconPath": "static/tabbar/todo.png",
+        "selectedIconPath": "static/tabbar/todo-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "static/tabbar/mine.png",
+        "selectedIconPath": "static/tabbar/mine-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "日常使用",
+    "navigationBarBackgroundColor": "#F4F6FB",
+    "backgroundColor": "#F4F6FB"
+  }
+}

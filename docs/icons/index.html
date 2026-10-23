@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dailyuse 图标候选 · 9 版</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 48px 40px 80px;
+    background: #F4F6FB; color: #16203A;
+    font-family: "PingFang SC", "Hiragino Sans GB", -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header { max-width: 1180px; margin: 0 auto 36px; }
+  h1 { margin: 0 0 10px; font-size: 26px; font-weight: 600; letter-spacing: .5px; }
+  .lede { margin: 0; font-size: 14px; line-height: 1.75; color: #5A657F; max-width: 800px; }
+  .lede b { color: #3B5BDB; font-weight: 600; }
+  .bar { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 18px; font-size: 12px; color: #8A94AB; }
+  .bar span { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,.06); }
+
+  .grid {
+    max-width: 1180px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px;
+  }
+  .card {
+    background: #fff; border: 1px solid #E6EAF4; border-radius: 16px;
+    padding: 22px 22px 18px; box-shadow: 0 6px 20px rgba(59,91,219,.06);
+  }
+  .hero { display: flex; justify-content: center; padding: 12px 0 18px; }
+  .hero[style] { padding: 20px 0 22px; margin-bottom: -4px; }
+  .hero img { border-radius: 34px; box-shadow: 0 8px 22px rgba(59,91,219,.18); }
+  h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+  .note { margin: 0; font-size: 12.5px; line-height: 1.65; color: #6B7694; min-height: 42px; }
+  .tone {
+    display: inline-block; margin: 8px 0 0; padding: 2px 9px; border-radius: 999px;
+    background: #EEF2FE; color: #3B5BDB; font-size: 11.5px; letter-spacing: .3px;
+  }
+  .sizes {
+    display: flex; align-items: flex-end; flex-wrap: wrap; gap: 14px; margin-top: 16px;
+    padding-top: 16px; border-top: 1px dashed #E6EAF4;
+  }
+  .sz { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .sz img { border-radius: 22%; }
+  .sz figcaption { font-size: 10.5px; color: #A6AEC4; font-variant-numeric: tabular-nums; }
+  .path {
+    display: block; margin-top: 10px; font-size: 11px; color: #A6AEC4;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .ctx { max-width: 1180px; margin: 44px auto 0; }
+  .ctx h2 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  .ctx p { margin: 0 0 16px; font-size: 12.5px; color: #8A94AB; }
+  .phone { width: 380px; background: #EDEDED; border-radius: 14px; padding: 10px 0; }
+  .row { display: flex; align-items: center; gap: 12px; background: #fff; padding: 11px 14px; margin: 0 0 1px; }
+  .row img { border-radius: 22%; flex: none; }
+  .who { font-size: 15px; color: #111; }
+  .msg { margin-left: auto; font-size: 12px; color: #B2B2B2; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dailyuse 图标候选 · 9 版</h1>
+  <p class="lede">
+    全部手写矢量，几何按 <b>1024×1024</b> 网格精确对齐：满版方块、圆角 24%、无外边距、无投影（微信会自己裁圆角）。
+    每张卡片下方是 <b>144 / 96 / 64 / 40 / 32 / 24 px</b> 的真实渲染尺寸 —— 只用看得清 40px 那一档的版本。
+  </p>
+  <div class="bar">
+    <span><i class="sw" style="background:#3B5BDB"></i>主色 #3B5BDB</span>
+    <span><i class="sw" style="background:#EDF1FD"></i>浅底 #EDF1FD</span>
+    <span><i class="sw" style="background:#F4F6FB"></i>页面底 #F4F6FB</span>
+    <span>源文件：docs/icons/*.svg</span>
+    <span>上传用：docs/icons/square/*.png（直角满版，让微信自己裁圆角）</span>
+  </div>
+</header>
+
+<main class="grid">
+      <article class="card"><div class="hero"><img src="01-ri-standard.svg" width="144" height="144" alt=""></div><div class="meta"><h3>日 · 标准</h3><p class="note">主推。描边 8.4%，中横居中，24px 仍可辨。</p><p class="tone">推荐</p></div><div class="sizes"><figure class="sz"><img src="01-ri-standard.svg" width="96" height="96" alt=""><figcaption>96</figcaption></figure><figure class="sz"><img src="01-ri-standard.svg" width="64" height="64" alt=""><figcaption>64</figcaption></figure><figure class="sz"><img src="01-ri-standard.svg" width="40" height="40" alt=""><figcaption>40</figcaption></figure><figure class="sz"><img src="01-ri-standard.svg" width="32" height="32" alt=""><figcaption>32</figcaption></figure><figure class="sz"><img src="01-ri-standard.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure></div><code class="path">01-ri-standard.svg</code></article>
+      <article class="card"><div class="hero"><img src="02-ri-heavy.svg" width="144" height="144" alt=""></div><div class="meta"><h3>日 · 粗描边</h3><p class="note">描边 12.3%。小尺寸最抗压，但细节更少，偏「符号」。</p><p class="tone">小尺寸最稳</p></div><div class="sizes"><figure class="sz"><img src="02-ri-heavy.svg" width="96" height="96" alt=""><figcaption>96</figcaption></figure><figure class="sz"><img src="02-ri-heavy.svg" width="64" height="64" alt=""><figcaption>64</figcaption></figure><figure class="sz"><img src="02-ri-heavy.svg" width="40" height="40" alt=""><figcaption>40</figcaption></figure><figure class="sz"><img src="02-ri-heavy.svg" width="32" height="32" alt=""><figcaption>32</figcaption></figure><figure class="sz"><img src="02-ri-heavy.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure></div><code class="path">02-ri-heavy.svg</code></article>
+      <article class="card"><div class="hero"><img src="03-ri-raised.svg" width="144" height="144" alt=""></div><div class="meta"><h3>日 · 中横上移</h3><p class="note">中横上移 72。更像书法的日，下方留白多，重心偏上。</p><p class="tone">更有人味</p></div><div class="sizes"><figure class="sz"><img src="03-ri-raised.svg" width="96" height="96" alt=""><figcaption>96</figcaption></figure><figure class="sz"><img src="03-ri-raised.svg" width="64" height="64" alt=""><figcaption>64</figcaption></figure><figure class="sz"><img src="03-ri-raised.svg" width="40" height="40" alt=""><figcaption>40</figcaption></figure><figure class="sz"><img src="03-ri-raised.svg" width="32" height="32" alt=""><figcaption>32</figcaption></figure><figure class="sz"><img src="03-ri-raised.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure></div><code class="path">03-ri-raised.svg</code></article>
+      <article class="card"><div class="hero" style="background:#E9EDF7;border-radius:12px"><img src="04-ri-light.svg" width="144" height="144" alt=""></div><div class="meta"><h3>日 · 浅底蓝标</h3><p class="note">浅底 + 主色标记。放在白色聊天列表里更轻，但对比降低。</p><p class="tone">轻量</p></div><div class="sizes"><figure class="sz"><img src="04-ri-light.svg" width="96" height="96" alt=""><figcaption>96</figcaption></figure><figure class="sz"><img src="04-ri-light.svg" width="64" height="64" alt=""><figcaption>64</figcaption></figure><figure class="sz"><img src="04-ri-light.svg" width="40" height="40" alt=""><figcaption>40</figcaption></figure><figure class="sz"><img src="04-ri-light.svg" width="32" height="32" alt=""><figcaption>32</figcaption></figure><figure class="sz"><img src="04-ri-light.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure></div><code class="path">04-ri-light.svg</code></article>
+      <article class="card"><div class="hero"><img src="05-grid-dim.svg" width="144" height="144" alt=""></div><div class="meta"><h3>四格 · 缺一</h3><p class="note">呼应首页工具栏。右下角半透明，暗示「还有一个位置」。</p><p class="tone">备选</p></div><div class="sizes"><figure class="sz"><img src="05-grid-dim.svg" width="96" height="96" alt=""><figcaption>96</figcaption></figure><figure class="sz"><img src="05-grid-dim.svg" width="64" height="64" alt=""><figcaption>64</figcaption></figure><figure class="sz"><img src="05-grid-dim.svg" width="40" height="40" alt=""><figcaption>40</figcaption></figure><figure class="sz"><img src="05-grid-dim.svg" width="32" height="32" alt=""><figcaption>32</figcaption></figure><figure class="sz"><img src="05-grid-dim.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure></div><code class="path">05-grid-dim.svg</code></article>
+      <article class="card"><div class="hero"><img src="06-grid-solid.svg" width="144" height="144" alt=""></div><div class="meta"><h3>四格 · 全实心</h3><p class="note">同上但四格等重。更稳，也更像通用的「应用」图标。</p><p class="tone">最中性</p></div><div class="sizes"><figure class="sz"><img src="06-grid-solid.svg" width="96" height="96" alt=""><figcaption>96</figcaption></figure><figure class="sz"><img src="06-grid-solid.svg" width="64" height="64" alt=""><figcaption>64</figcaption></figure><figure class="sz"><img src="06-grid-solid.svg" width="40" height="40" alt=""><figcaption>40</figcaption></figure><figure class="sz"><img src="06-grid-solid.svg" width="32" height="32" alt=""><figcaption>32</figcaption></figure><figure class="sz"><img src="06-grid-solid.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure></div><code class="path">06-grid-solid.svg</code></article>
+      <article class="card"><div class="hero"><img src="07-stack.svg" width="144" height="144" alt=""></div><div class="meta"><h3>叠卡</h3><p class="note">两张卡片错位堆叠，语义是「很多小事攒在一起」。40px 起开始糊。</p><p class="tone">有故事但脆弱</p></div><div class="sizes"><figure class="sz"><img src="07-stack.svg" width="96" height="96" alt=""><figcaption>96</figcaption></figure><figure class="sz"><img src="07-stack.svg" width="64" height="64" alt=""><figcaption>64</figcaption></figure><figure class="sz"><img src="07-stack.svg" width="40" height="40" alt=""><figcaption>40</figcaption></figure><figure class="sz"><img src="07-stack.svg" width="32" height="32" alt=""><figcaption>32</figcaption></figure><figure class="sz"><img src="07-stack.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure></div><code class="path">07-stack.svg</code></article>
+      <article class="card"><div class="hero"><img src="08-list.svg" width="144" height="144" alt=""></div><div class="meta"><h3>清单三横</h3><p class="note">记录 / 待办的直接抽象。诚实但和一堆效率工具撞脸。</p><p class="tone">安全</p></div><div class="sizes"><figure class="sz"><img src="08-list.svg" width="96" height="96" alt=""><figcaption>96</figcaption></figure><figure class="sz"><img src="08-list.svg" width="64" height="64" alt=""><figcaption>64</figcaption></figure><figure class="sz"><img src="08-list.svg" width="40" height="40" alt=""><figcaption>40</figcaption></figure><figure class="sz"><img src="08-list.svg" width="32" height="32" alt=""><figcaption>32</figcaption></figure><figure class="sz"><img src="08-list.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure></div><code class="path">08-list.svg</code></article>
+      <article class="card"><div class="hero"><img src="09-ring.svg" width="144" height="144" alt=""></div><div class="meta"><h3>圆环 + 点</h3><p class="note">环 = 周期，点 = 未读。最偏「资讯」，多工具的语义传不出来。</p><p class="tone">偏资讯</p></div><div class="sizes"><figure class="sz"><img src="09-ring.svg" width="96" height="96" alt=""><figcaption>96</figcaption></figure><figure class="sz"><img src="09-ring.svg" width="64" height="64" alt=""><figcaption>64</figcaption></figure><figure class="sz"><img src="09-ring.svg" width="40" height="40" alt=""><figcaption>40</figcaption></figure><figure class="sz"><img src="09-ring.svg" width="32" height="32" alt=""><figcaption>32</figcaption></figure><figure class="sz"><img src="09-ring.svg" width="24" height="24" alt=""><figcaption>24</figcaption></figure></div><code class="path">09-ring.svg</code></article>
+</main>
+
+<section class="ctx">
+  <h2>放进微信会话列表的样子</h2>
+  <p>图标实际显示约 40px，这一档才是真正的考场。</p>
+  <div class="phone">
+        <div class="row"><img src="01-ri-standard.svg" width="40" height="40" alt=""><span class="who">日常使用</span><span class="msg">日 · 标准</span></div>
+        <div class="row"><img src="02-ri-heavy.svg" width="40" height="40" alt=""><span class="who">日常使用</span><span class="msg">日 · 粗描边</span></div>
+        <div class="row"><img src="03-ri-raised.svg" width="40" height="40" alt=""><span class="who">日常使用</span><span class="msg">日 · 中横上移</span></div>
+        <div class="row"><img src="04-ri-light.svg" width="40" height="40" alt=""><span class="who">日常使用</span><span class="msg">日 · 浅底蓝标</span></div>
+  </div>
+</section>
+</body>
+</html>
