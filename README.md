@@ -114,7 +114,42 @@ PATCH /api/auth/me       # { nickname?, avatarUrl? }，昵称 ≤24 字，头像
 POST  /api/auth/logout   # 语义占位；JWT 无状态，实际清理在前端删 token
 ```
 
-## 五、约定
+## 五、付费骨架（未接支付）
+
+已有权益模型和门禁，**但没接支付，默认不拦人**。设计只有一条铁律：权益只从数据库读，客户端传来的 `tier` 一律丢弃。
+
+数据模型（`users` 表）：
+
+| 字段 | 说明 |
+|------|------|
+| `tier` | `free` / `pro`，只能由服务端写 |
+| `paid_until` | pro 到期时间，`null` = 永久；到期后自动按 free 处理，无需定时任务回写 |
+
+开关与用法：
+
+```bash
+PAY_ENFORCED=0   # 默认：pro 接口对 free 用户放行，只在日志里记 [paywall] dry-run
+PAY_ENFORCED=1   # 真正拦人：free 用户拿到 402
+```
+
+```bash
+# 手动开通（运维/测试，不走 HTTP，没有后门接口）
+npm run tier -- --openid dev-local --tier pro --days 365
+npm run tier -- --openid dev-local --tier free     # 降级
+npm run tier -- --list                             # 看所有人的权益
+```
+
+要新增一个付费接口，只需在路由上加门禁（示例见 `PATCH /groups/:id/tools`）：
+
+```ts
+app.patch('/xxx', { preHandler: app.requirePro }, async (req) => { /* ... */ });
+```
+
+`402` 响应带 `{ needTier, currentTier, paidUntil }`，前端 `request()` 会统一 emit `need-pro` 并给出提示。
+
+**尚未实现**（接支付时才需要）：订单表与回调验签、幂等、iOS 端隐藏虚拟支付入口（微信规则禁止 iOS 用微信支付买会员）。
+
+## 六、约定
 
 - 所有查询强制带 `userId`，防越权
 - 接口统一返回 `{ code, data, message }`

@@ -62,6 +62,15 @@ export function request<T>(path: string, options: Partial<UniApp.RequestOptions>
           return;
         }
 
+        // 402：付费门禁。文案与服务端保持一致，界面据此引导升级。
+        if (res.statusCode === 402) {
+          const err = new Error(body?.message || '该功能需要专业版') as Error & { code?: number };
+          err.code = 402;
+          uni.$emit('need-pro', body?.data);
+          reject(err);
+          return;
+        }
+
         if (res.statusCode >= 400 || (body && body.code !== 0)) {
           reject(new Error(body?.message || `请求失败 ${res.statusCode}`));
           return;
@@ -116,11 +125,20 @@ export function ensureLogin(tip = '登录后才能使用该功能'): Promise<boo
 }
 
 /** 微信登录：wx.login → code 换 token */
+export interface Entitlement {
+  tier: 'free' | 'pro';
+  /** 仅用于界面展示，真正的权限判断在服务端 */
+  isPro: boolean;
+  paidUntil: string | null;
+  expired: boolean;
+}
+
 export interface Me {
   id: string;
   nickname: string | null;
   avatarUrl: string | null;
   createdAt?: string;
+  entitlement?: Entitlement;
 }
 
 export interface LoginResult {

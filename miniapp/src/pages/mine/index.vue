@@ -11,6 +11,7 @@
           <text class="pedit">✎</text>
         </view>
         <view class="psub">
+          <text class="ptier" :class="{ pro: isPro }">{{ tierLabel }}</text>
           <text v-if="isDev" class="pdev">调试账号</text>
           <text>{{ isDev ? '未接通微信，仅本机使用' : '数据已云端同步' }}</text>
         </view>
@@ -26,7 +27,7 @@
     </view>
 
     <view class="menu">
-      <view v-for="m in menus" :key="m.t" class="mrow" @tap="todo(m.t)">
+      <view v-for="m in menuList" :key="m.t" class="mrow" @tap="todo(m.t)">
         <text class="mico">{{ m.icon }}</text>
         <text class="mt">{{ m.t }}</text>
         <text class="marr">›</text>
@@ -47,6 +48,18 @@ import { useAuthGate } from '@/composables/useAuthGate';
 const quota = ref(0);
 const profile = ref<Partial<Me>>({});
 const isDev = ref(false);
+
+const isPro = computed(() => profile.value.entitlement?.isPro === true);
+
+const tierLabel = computed(() => {
+  const ent = profile.value.entitlement;
+  if (!ent) return '';
+  if (!ent.isPro) return ent.tier === 'pro' ? '专业版已过期' : '免费版';
+  const until = ent.paidUntil ? new Date(ent.paidUntil) : null;
+  if (!until) return '专业版';
+  const d = `${until.getFullYear()}-${String(until.getMonth() + 1).padStart(2, '0')}-${String(until.getDate()).padStart(2, '0')}`;
+  return `专业版 · ${d} 到期`;
+});
 
 const initial = computed(() => {
   const name = profile.value.nickname?.trim();
@@ -86,6 +99,21 @@ const menus = [
   { icon: '📤', t: '数据导出' },
   { icon: 'ℹ️', t: '关于' },
 ];
+
+/** 未开通时把升级入口顶到最前面 */
+const menuList = computed(() =>
+  isPro.value ? menus : [{ icon: '💎', t: '升级专业版' }, ...menus]
+);
+
+function upgrade() {
+  // 支付还没接：这里保持诚实的提示，别做成假按钮
+  uni.showModal({
+    title: '专业版',
+    content: '支付通道尚未接入。当前可用 npm run tier 手动开通，用于联调付费门禁。',
+    showCancel: false,
+    confirmText: '知道了',
+  });
+}
 
 // 昵称：用微信原生的 nickname 输入能力，避免自己造 profile 授权（已废弃）
 function editNickname() {
@@ -134,6 +162,10 @@ const menuRoutes: Record<string, string> = {
 };
 
 function todo(name: string) {
+  if (name === '升级专业版') {
+    upgrade();
+    return;
+  }
   const url = menuRoutes[name];
   if (url) {
     uni.navigateTo({ url });
@@ -170,6 +202,17 @@ function todo(name: string) {
 .pname { font-size: 15px; font-weight: 600; }
 .pedit { margin-left: 6px; font-size: 11px; opacity: 0.75; }
 .psub { margin-top: 3px; font-size: 10px; opacity: 0.82; display: flex; align-items: center; gap: 6px; }
+.ptier {
+  padding: 1px 6px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  font-size: 9px; font-weight: 600;
+}
+.ptier.pro {
+  background: #FFE8A3;
+  border-color: #FFD666;
+  color: #8A5A00;
+}
 .pdev {
   padding: 1px 6px; border-radius: 999px;
   background: rgba(255, 255, 255, 0.24);

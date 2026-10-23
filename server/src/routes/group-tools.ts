@@ -209,7 +209,10 @@ export const groupToolRoutes: FastifyPluginAsync = async (app) => {
     'custom',
   ];
 
-  app.patch('/groups/:id/tools', async (req, reply) => {
+  // 付费门禁示例：自定义群工具属于 pro 功能。
+  // 其余要收费的接口照这个样子加 `{ preHandler: app.requirePro }` 即可，
+  // 是否真的拦人由 PAY_ENFORCED 决定（默认关，接了支付再打开）。
+  app.patch('/groups/:id/tools', { preHandler: app.requirePro }, async (req, reply) => {
     const { id } = req.params as { id: string };
     if (!(await isMember(id, req.user.sub))) {
       return reply.code(403).send({ code: 403, message: '你不在该群组' });

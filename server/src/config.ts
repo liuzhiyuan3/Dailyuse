@@ -30,6 +30,14 @@ export const config = {
     /** 单次外网抓取超时（毫秒） */
     fetchTimeoutMs: Number(process.env.NEWS_FETCH_TIMEOUT_MS || 8000),
   },
+  pay: {
+    /**
+     * 是否真的执行付费门禁。
+     * false（默认）：付费接口对所有人放行，只在日志里记一条"本应 402"。
+     * true：free 用户访问付费接口得到 402。等接完支付再打开。
+     */
+    enforced: process.env.PAY_ENFORCED === '1',
+  },
   wx: {
     appid: process.env.WX_APPID || '',
     secret: process.env.WX_SECRET || '',

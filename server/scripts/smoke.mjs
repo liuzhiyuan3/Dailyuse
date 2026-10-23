@@ -223,6 +223,20 @@ async function main() {
   const me = await call('/auth/me', { token: tokenA });
   check('读取当前用户', me.status === 200 && Boolean(me.json?.data?.user?.id), JSON.stringify(me.json));
 
+  // 付费骨架：新用户默认 free；客户端改不动 tier
+  const ent = me.json?.data?.user?.entitlement;
+  check('新用户默认免费版', ent?.tier === 'free' && ent?.isPro === false, JSON.stringify(ent));
+  const escalate = await call('/auth/me', {
+    method: 'PATCH',
+    token: tokenA,
+    body: { nickname: '阿甲', tier: 'pro', paidUntil: '2099-01-01T00:00:00.000Z' },
+  });
+  check(
+    '客户端无法自封 pro',
+    escalate.json?.data?.user?.entitlement?.isPro === false,
+    JSON.stringify(escalate.json?.data?.user?.entitlement)
+  );
+
   const meAnon = await call('/auth/me');
   check('未登录读资料被拒', meAnon.status === 401);
 

@@ -17,6 +17,11 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // ===== 权益（付费骨架）=====
+  // tier：free | pro；paidUntil 为 null 表示永久有效
+  tier      String    @default("free")
+  paidUntil DateTime? @map("paid_until")
+
   todos      Todo[]
   notes      Note[]
   accounts   Account[]

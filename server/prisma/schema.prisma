@@ -17,6 +17,12 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // ===== 权益（付费骨架）=====
+  // tier：free | pro。只能由服务端写（支付回调 / 运维脚本），任何登录用户请求体里的 tier 都丢弃。
+  tier      String    @default("free") @db.VarChar(12)
+  // pro 的到期时间；null 表示永久。到期后自动按 free 处理，不需要定时任务去改字段。
+  paidUntil DateTime? @map("paid_until")
+
   todos      Todo[]
   notes      Note[]
   accounts   Account[]

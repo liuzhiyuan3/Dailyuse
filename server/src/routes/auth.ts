@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../plugins/db';
 import { code2Session, DevLoginDisabledError } from '../lib/wechat';
 import { loginMode } from '../config';
+import { resolveEntitlement } from '../lib/entitlements';
 
 interface LoginBody {
   code?: unknown;
@@ -15,13 +16,31 @@ interface ProfileBody {
 const NICKNAME_MAX = 24;
 const AVATAR_MAX = 512;
 
-/** 对外只暴露必要字段，openid 不外泄 */
-function toPublicUser(u: { id: string; nickname: string | null; avatarUrl: string | null; createdAt: Date }) {
+/**
+ * 对外只暴露必要字段，openid 不外泄。
+ * 权益信息以解析后的 entitlement 形式给出：客户端拿到的 isPro 只用于展示，
+ * 任何真正的权限判断都在服务端 requirePro 里重做一遍。
+ */
+function toPublicUser(u: {
+  id: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+  createdAt: Date;
+  tier: string;
+  paidUntil: Date | null;
+}) {
+  const ent = resolveEntitlement(u);
   return {
     id: u.id,
     nickname: u.nickname,
     avatarUrl: u.avatarUrl,
     createdAt: u.createdAt,
+    entitlement: {
+      tier: ent.tier,
+      isPro: ent.isPro,
+      paidUntil: ent.paidUntil,
+      expired: ent.expired,
+    },
   };
 }
 
@@ -83,6 +102,16 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   app.patch('/auth/me', { preHandler: app.authenticate }, async (req, reply) => {
     const body = (req.body ?? {}) as ProfileBody;
     const data: { nickname?: string | null; avatarUrl?: string | null } = {};
+
+    // 权益字段绝不由客户端写：这里只接受昵称和头像，其余一律丢弃并留痕。
+    // 真要改 tier/paidUntil，走支付回调或 scripts/set-tier.mjs。
+    const raw = (req.body ?? {}) as Record<string, unknown>;
+    if ('tier' in raw || 'paidUntil' in raw || 'paid_until' in raw) {
+      req.log.warn(
+        { userId: req.user.sub, keys: Object.keys(raw) },
+        '[entitlement] 客户端试图修改权益字段，已忽略'
+      );
+    }
 
     if (body.nickname !== undefined) {
       if (body.nickname !== null && typeof body.nickname !== 'string') {
