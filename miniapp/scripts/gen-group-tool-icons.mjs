@@ -11,7 +11,8 @@ const OUT = path.join(__dirname, '..', 'src', 'static', 'group-tools');
 
 const KEYS = [
   'todo', 'list', 'expense', 'event', 'score', 'order',
-  'notice', 'recipe', 'link', 'parcel', 'duty', 'wish', 'custom',
+  'notice', 'recipe', 'link', 'parcel', 'duty', 'wish',
+  'poll', 'countdown', 'chain', 'custom',
 ];
 
 const COLORS = [

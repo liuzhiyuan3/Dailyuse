@@ -24,12 +24,6 @@ export const config = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
-  news: {
-    /** 单个用户每天可手动触发抓取的次数上限 */
-    refreshPerDay: Number(process.env.NEWS_REFRESH_PER_DAY || 20),
-    /** 单次外网抓取超时（毫秒） */
-    fetchTimeoutMs: Number(process.env.NEWS_FETCH_TIMEOUT_MS || 8000),
-  },
   pay: {
     /**
      * 是否真的执行付费门禁。
@@ -38,10 +32,24 @@ export const config = {
      */
     enforced: process.env.PAY_ENFORCED === '1',
   },
+  /** 网页管理后台（/admin）的登录密码；留空 = 网页后台关闭 */
+  adminPassword: process.env.ADMIN_PASSWORD || '',
+  /** 管理员 openid 白名单（逗号分隔）：管理后台与公告发布的权限来源 */
+  adminOpenids: (process.env.ADMIN_OPENIDS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
   wx: {
     appid: process.env.WX_APPID || '',
     secret: process.env.WX_SECRET || '',
     templateId: process.env.WX_TEMPLATE_ID || '',
+    // 天气订阅专用的「天气提醒」模板（字段结构与日程提醒不同，推送时不能用错）
+    weatherTemplateId: process.env.WX_WEATHER_TEMPLATE_ID || '',
+  },
+  qweather: {
+    // 和风天气开发服务：key + 账号专属 API Host（控制台凭据页可查）
+    key: process.env.QWEATHER_KEY || '',
+    host: process.env.QWEATHER_HOST || '',
   },
   push: {
     perKeywordPerDay: Number(process.env.PUSH_PER_KEYWORD_PER_DAY || 3),

@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../plugins/db';
 import { code2Session, DevLoginDisabledError } from '../lib/wechat';
-import { loginMode } from '../config';
+import { config, loginMode } from '../config';
 import { resolveEntitlement } from '../lib/entitlements';
 
 interface LoginBody {
@@ -23,6 +23,7 @@ const AVATAR_MAX = 512;
  */
 function toPublicUser(u: {
   id: string;
+  openid: string;
   nickname: string | null;
   avatarUrl: string | null;
   createdAt: Date;
@@ -41,6 +42,8 @@ function toPublicUser(u: {
       paidUntil: ent.paidUntil,
       expired: ent.expired,
     },
+    // 管理后台入口的显隐依据；接口真正的权限判断在 requireAdmin 重做一遍
+    isAdmin: config.adminOpenids.includes(u.openid),
   };
 }
 
@@ -144,6 +147,65 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
     const user = await prisma.user.update({ where: { id: req.user.sub }, data });
     return { code: 0, data: { user: toPublicUser(user) }, message: 'ok' };
+  });
+
+  /**
+   * 数据导出：当前用户的全部业务数据（不含 openid）。
+   * 只读、不分页——单用户工具数据 < 1MB（PRD §8.3），一次性给全。
+   */
+  app.get('/auth/export', { preHandler: app.authenticate }, async (req) => {
+    const uid = req.user.sub;
+    const [todos, notes, accounts, countdowns, reminders, foods, memberships, wheels, habits, habitLogs] =
+      await Promise.all([
+        prisma.todo.findMany({ where: { userId: uid }, orderBy: { createdAt: 'desc' } }),
+        prisma.note.findMany({ where: { userId: uid }, orderBy: { updatedAt: 'desc' } }),
+        prisma.account.findMany({ where: { userId: uid }, orderBy: { occurredAt: 'desc' } }),
+        prisma.countdown.findMany({ where: { userId: uid }, orderBy: { targetDate: 'asc' } }),
+        prisma.reminder.findMany({ where: { userId: uid }, orderBy: { remindAt: 'asc' } }),
+        prisma.foodRecord.findMany({ where: { userId: uid }, orderBy: { createdAt: 'desc' } }),
+        prisma.groupMember.findMany({
+          where: { userId: uid },
+          include: { group: { select: { id: true, name: true } } },
+          orderBy: { joinedAt: 'desc' },
+        }),
+        prisma.wheel.findMany({ where: { userId: uid }, orderBy: { updatedAt: 'desc' } }),
+        prisma.habit.findMany({ where: { userId: uid }, orderBy: { createdAt: 'asc' } }),
+        prisma.habitLog.findMany({ where: { userId: uid }, orderBy: { day: 'desc' }, select: { habitId: true, day: true } }),
+      ]);
+
+    const user = await prisma.user.findUnique({ where: { id: uid } });
+    return {
+      code: 0,
+      data: {
+        exportedAt: new Date().toISOString(),
+        user: user ? toPublicUser(user) : null,
+        todos,
+        notes,
+        accounts,
+        countdowns,
+        reminders,
+        foods,
+        wheels,
+        habits,
+        habitLogs,
+        groups: memberships.map((m) => ({ id: m.group.id, name: m.group.name, role: m.role })),
+      },
+    };
+  });
+
+  /**
+   * 注销账号：级联删除全部个人数据（schema 各子表均 onDelete: Cascade）。
+   * 名下群组随 owner 级联解散；JWT 是无状态的，注销后旧 token 再访问 /auth/me
+   * 会因用户不存在落到 401 分支，无需黑名单。
+   */
+  app.delete('/auth/me', { preHandler: app.authenticate }, async (req, reply) => {
+    const user = await prisma.user.findUnique({ where: { id: req.user.sub } });
+    if (!user) {
+      return reply.code(401).send({ code: 401, message: '用户不存在，请重新登录' });
+    }
+    await prisma.user.delete({ where: { id: req.user.sub } });
+    req.log.info({ userId: req.user.sub }, '[auth] 账号注销，数据已级联删除');
+    return { code: 0, data: { ok: true } };
   });
 
   // 退出登录：JWT 无状态，服务端只做语义占位，真正的清理由客户端删 token

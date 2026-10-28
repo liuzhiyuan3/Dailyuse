@@ -1,7 +1,8 @@
 <template>
   <view class="page">
-    <LoginGate v-if="!logged" title="登录后使用记账" subtitle="流水记录到云端，换手机不丢" />
-    <block v-else>
+    <view v-if="!logged" class="guest" @tap="goLogin">
+      游客模式 · 数据暂存本机，登录后自动同步云端 ›
+    </view>
     <view class="sum">
       <text class="sk">本月支出</text>
       <view class="sv num">¥{{ money(expense) }}</view>
@@ -9,6 +10,22 @@
         <text>收入 ¥{{ money(income) }}</text>
         <text>结余 ¥{{ money(balance) }}</text>
       </view>
+    </view>
+
+    <view v-if="dailyBars.length" class="chart">
+      <view class="chead">
+        <text class="ct">本月每日支出</text>
+        <text class="cmax">峰值 ¥{{ money(maxDaily) }}</text>
+      </view>
+      <scroll-view scroll-x class="cbody" :show-scrollbar="false">
+        <view class="bars">
+          <view v-for="b in dailyBars" :key="b.day" class="bar-item">
+            <text class="bval">{{ shortMoney(b.v) }}</text>
+            <view class="bar" :style="{ height: b.h + 'px' }" />
+            <text class="bday">{{ b.day }}</text>
+          </view>
+        </view>
+      </scroll-view>
     </view>
 
     <view class="seg">
@@ -74,14 +91,15 @@
         </view>
       </picker>
     </view>
-    </block>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { getToken, request } from '@/api/request';
+import { onShow } from '@dcloudio/uni-app';
+import { ensureLogin, getToken, request } from '@/api/request';
 import { useAuthGate } from '@/composables/useAuthGate';
+import { loadLocal, newLocalId, saveLocal, type LocalAccount } from '@/utils/localData';
 
 interface Account {
   id: string;
@@ -114,13 +132,57 @@ const filtered = computed(() => list.value.filter((a) => a.type === tab.value));
 function money(v: number | string) {
   return Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
 }
+/** 柱状图顶上的短金额：去尾零（88 → 88，88.5 → 88.5，1234 → 1.2k） */
+function shortMoney(v: number) {
+  if (v >= 10000) return `${(v / 10000).toFixed(1).replace(/\.0$/, '')}w`;
+  if (v >= 1000) return `${(v / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(Math.round(v * 100) / 100);
+}
 function shortDate(iso: string) {
   const d = new Date(iso);
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+/** 本月每日支出柱状图（PRD §4.4），条数多时横向滚动 */
+const dailyBars = computed(() => {
+  const now = new Date();
+  const byDay = new Map<number, number>();
+  for (const a of list.value) {
+    if (a.type !== 'expense') continue;
+    const d = new Date(a.occurredAt);
+    if (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth()) continue;
+    byDay.set(d.getDate(), (byDay.get(d.getDate()) || 0) + Number(a.amount));
+  }
+  const days = [...byDay.entries()].sort((x, y) => x[0] - y[0]);
+  const max = Math.max(...days.map(([, v]) => v), 1);
+  return days.map(([day, v]) => ({ day, v, h: Math.max(8, Math.round((v / max) * 56)) }));
+});
+
+const maxDaily = computed(() => Math.max(...dailyBars.value.map((b) => b.v), 0));
+
+function localSummary(items: Account[]) {
+  const now = new Date();
+  let inc = 0;
+  let exp = 0;
+  for (const a of items) {
+    const d = new Date(a.occurredAt);
+    if (d.getFullYear() !== now.getFullYear() || d.getMonth() !== now.getMonth()) continue;
+    if (a.type === 'income') inc += Number(a.amount);
+    else exp += Number(a.amount);
+  }
+  return { income: inc, expense: exp, balance: inc - exp };
+}
+
 async function load() {
-  if (!getToken()) return;
+  if (!getToken()) {
+    // 游客态：读本地暂存并现场算汇总
+    list.value = loadLocal<LocalAccount>('accounts');
+    const s = localSummary(list.value);
+    income.value = s.income;
+    expense.value = s.expense;
+    balance.value = s.balance;
+    return;
+  }
   try {
     const [acc, sum] = await Promise.all([
       request<{ list: Account[] }>('/accounts'),
@@ -131,6 +193,10 @@ async function load() {
     expense.value = sum.expense;
     balance.value = sum.balance;
   } catch { /* 静默 */ }
+}
+
+function goLogin() {
+  void ensureLogin('登录后数据同步到云端，换设备不丢');
 }
 
 function todayStr() {
@@ -174,6 +240,20 @@ async function save() {
     occurredAt: form.value.date || todayStr(),
   };
 
+  if (!getToken()) {
+    const local = loadLocal<LocalAccount>('accounts');
+    if (form.value.id) {
+      const hit = local.find((a) => a.id === form.value.id);
+      if (hit) Object.assign(hit, payload);
+    } else {
+      local.unshift({ id: newLocalId(), ...payload });
+    }
+    saveLocal('accounts', local);
+    sheet.value = false;
+    await load();
+    return;
+  }
+
   try {
     if (form.value.id) {
       await request(`/accounts/${form.value.id}`, { method: 'PATCH', data: payload });
@@ -188,6 +268,15 @@ async function save() {
 }
 
 async function remove(a: Account) {
+  if (!getToken()) {
+    list.value = list.value.filter((x) => x.id !== a.id);
+    saveLocal('accounts', list.value);
+    const s = localSummary(list.value);
+    income.value = s.income;
+    expense.value = s.expense;
+    balance.value = s.balance;
+    return;
+  }
   try {
     await request(`/accounts/${a.id}`, { method: 'DELETE' });
     list.value = list.value.filter((x) => x.id !== a.id);
@@ -198,10 +287,40 @@ async function remove(a: Account) {
 }
 
 const { logged } = useAuthGate(load);
+
+// 游客态没有登录事件可等，进页面时直接读本地
+onShow(() => {
+  if (!logged.value) void load();
+});
 </script>
 
 <style scoped>
 .page { min-height: 100vh; padding: 12px 18px 90px; box-sizing: border-box; background: var(--bg); }
+
+.guest {
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(59, 91, 219, .08);
+  border: 1px dashed rgba(59, 91, 219, .35);
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.chart {
+  margin-top: 10px; padding: 13px 14px 10px;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.chead { display: flex; align-items: baseline; justify-content: space-between; }
+.ct { font-size: 12px; font-weight: 600; }
+.cmax { font-size: 9.5px; color: var(--muted); }
+.cbody { margin-top: 10px; white-space: nowrap; }
+.bars { display: inline-flex; align-items: flex-end; gap: 8px; }
+.bar-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bval { font-size: 8px; color: var(--muted); }
+.bar { width: 14px; border-radius: 4px 4px 2px 2px; background: var(--grad); }
+.bday { font-size: 9px; color: var(--muted); }
 
 .sum {
   padding: 16px; border-radius: var(--radius);

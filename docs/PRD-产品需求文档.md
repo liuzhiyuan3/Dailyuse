@@ -11,6 +11,7 @@
 | v0.2 | 2026-10-15 | 新增新闻资讯模块（关键词订阅 + 服务端抓取推送）；引入服务端架构 |
 | **v0.3** | **2026-10-22** | **整合技术栈定案（uni-app + Fastify + Prisma + PostgreSQL）；工具数据由本地改为入库；新增接口契约、数据库 DDL、部署运维、测试用例、决策记录、术语表** |
 | **v0.4** | **2026-10-22** | **新增「提醒与推送」：待办/倒数日/群组待办可推送到微信，采用一次性订阅额度制；新增 reminders 表与接口；风险 R9、决策 D11/D12** |
+| **v0.5** | **2026-10-24** | **实现期修订：游客模式按 §4.1/§6.5 落地（4 工具本机暂存 + 登录合并）；新增便签定期提醒（reminders.repeat 字段，每天/每周/每月，toolType=note）；新增数据导出与账号注销（合规 §10）；提醒额度补充接口 /reminders/:id/grant 接入前端；新闻抓取层预置 6 个免费源 + RSS 关键词模板** |
 
 ---
 
@@ -579,7 +580,7 @@ create index idx_reminders_due on reminders (status, remind_at);
 
 | 项 | 约定 |
 |----|------|
-| Base URL | `https://<你的域名>/api` |
+| Base URL | `https://lzy.benefitgpt.top/api` |
 | 鉴权 | `Authorization: Bearer <JWT>` |
 | 响应包裹 | `{ "code": 0, "data": ..., "message": "ok" }` |
 | 分页 | `?page=1&pageSize=20` → `{ list, total, page, pageSize }` |

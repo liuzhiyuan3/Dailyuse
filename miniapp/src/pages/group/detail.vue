@@ -61,6 +61,7 @@
           >
             <view class="ck"><text v-if="x.done">✓</text></view>
             <text class="tx">{{ x.title }}</text>
+            <text class="bell" :class="bellClass(x.id)" @tap.stop="openRemind(x)">🔔</text>
           </view>
           <view v-if="!group.todos.length" class="emptyline">还没有集体待办</view>
         </view>
@@ -197,6 +198,142 @@
         </view>
       </view>
 
+      <!-- 投票 -->
+      <view v-if="currentKind === 'poll'" class="pane">
+        <view v-for="p in polls" :key="p.id" class="card" @longpress="removePoll(p)">
+          <view class="pollhead">
+            <text class="pq">{{ p.question }}</text>
+            <text class="pstate" :class="{ off: p.closed }">{{ p.closed ? '已截止' : '进行中' }}</text>
+          </view>
+          <view class="pmeta">
+            {{ p.multi ? '多选' : '单选' }} · {{ p.votedCount }} 人参与 · {{ pollTotal(p) }} 票
+            <text v-if="deadlineText(p)" class="pdl">{{ deadlineText(p) }}</text>
+          </view>
+
+          <view
+            v-for="o in p.options"
+            :key="o.id"
+            class="popt"
+            @tap="tapOption(p, o)"
+          >
+            <view class="poind" :class="{ multi: p.multi, on: isSel(p, o), dim: p.closed }">
+              <text v-if="isSel(p, o)">✓</text>
+            </view>
+            <view class="pobody">
+              <view class="porowline">
+                <text class="potext">{{ o.content }}</text>
+                <text class="pocount num">{{ o.count }} · {{ pct(p, o) }}%</text>
+              </view>
+              <view class="pobar">
+                <view class="pobar-in" :class="{ mine: isSel(p, o) }" :style="{ width: pct(p, o) + '%' }" />
+              </view>
+            </view>
+          </view>
+
+          <view
+            v-if="!p.closed"
+            class="pbtn"
+            :class="{ dim: !mySel(p).length }"
+            @tap="submitVote(p)"
+          >{{ p.myOptionIds.length ? '重新投票' : '投票' }}</view>
+        </view>
+        <view v-if="!polls.length" class="card"><view class="emptyline">还没有投票</view></view>
+
+        <!-- 发起投票 -->
+        <view class="card">
+          <input v-model="pq" class="ainput block" placeholder="投票问题，如「周末去哪玩」" />
+          <view v-for="(o, i) in po" :key="i" class="porow-i">
+            <input v-model="po[i]" class="ainput pflex" :placeholder="'选项 ' + (i + 1)" />
+            <text v-if="po.length > 2" class="podel" @tap="po.splice(i, 1)">✕</text>
+          </view>
+          <view v-if="po.length < 10" class="poadd" @tap="po.push('')">＋ 添加选项</view>
+
+          <view class="poptrow">
+            <text class="pklbl">多选</text>
+            <switch :checked="pmulti" color="#3B5BDB" @change="onPMulti" />
+          </view>
+          <view class="poptrow">
+            <text class="pklbl">设置截止时间</text>
+            <switch :checked="pdl" color="#3B5BDB" @change="onPDL" />
+          </view>
+          <block v-if="pdl">
+            <picker mode="date" :value="pdDate" @change="onPdDate">
+              <view class="pickrow"><text class="pk">日期</text><text>{{ pdDate }}</text><text class="arr">›</text></view>
+            </picker>
+            <picker mode="time" :value="pdTime" @change="onPdTime">
+              <view class="pickrow"><text class="pk">时间</text><text>{{ pdTime }}</text><text class="arr">›</text></view>
+            </picker>
+          </block>
+          <view class="abtn" @tap="addPoll">发起投票</view>
+        </view>
+      </view>
+
+      <!-- 群倒数日 -->
+      <view v-if="currentKind === 'countdown'" class="pane">
+        <view v-for="c in gcountdowns" :key="c.id" class="card" @longpress="removeGCountdown(c)">
+          <view class="gcd">
+            <text class="gname2">{{ c.name }}</text>
+            <text class="gdays num">{{ gcdLabel(c.targetDate) }}</text>
+            <text class="gdate">{{ (c.targetDate || '').slice(0, 10) }}</text>
+          </view>
+        </view>
+        <view v-if="!gcountdowns.length" class="card"><view class="emptyline">还没有倒数日</view></view>
+
+        <view class="card">
+          <input v-model="gcdName" class="ainput block" placeholder="名称，如「宝宝预产期」" />
+          <picker mode="date" :value="gcdDate" @change="onGcdDate">
+            <view class="pickrow"><text class="pk">日期</text><text>{{ gcdDate }}</text><text class="arr">›</text></view>
+          </picker>
+          <view class="abtn" @tap="addGCountdown">添加</view>
+        </view>
+      </view>
+
+      <!-- 接龙 -->
+      <view v-if="currentKind === 'chain'" class="pane">
+        <view v-for="c in chains" :key="c.id" class="card">
+          <view class="pollhead">
+            <text class="pq">{{ c.title }}</text>
+            <text class="pstate" :class="{ off: c.closed }">{{ c.closed ? '已截止' : `${c.entries.length} 人` }}</text>
+          </view>
+
+          <view class="chlist">
+            <view
+              v-for="(e, i) in c.entries"
+              :key="e.id"
+              class="chrow"
+              :class="{ mine: e.userId === myUserId }"
+              @longpress="quitChain(c, e)"
+            >
+              <text class="chno num">{{ i + 1 }}</text>
+              <text class="chname">{{ chainName(e.userId) }}</text>
+              <text v-if="e.remark" class="chremark">{{ e.remark }}</text>
+            </view>
+            <view v-if="!c.entries.length" class="emptyline">还没有人接龙</view>
+          </view>
+
+          <view v-if="!c.closed" class="chjoin">
+            <input
+              v-model="chainDraft[c.id]"
+              class="ainput chflex"
+              :placeholder="c.myEntry ? '修改我的备注' : '备注（可选），如「带两瓶水」'"
+            />
+            <view class="chbtn" @tap="joinChain(c)">{{ c.myEntry ? '更新' : '接龙' }}</view>
+            <view v-if="c.myEntry" class="chbtn ghost" @tap="quitChain(c, c.myEntry)">退出</view>
+          </view>
+
+          <view v-if="canManageChain(c)" class="chmanage">
+            <text class="chop" @tap="toggleChain(c)">{{ c.closed ? '重新开放' : '截止' }}</text>
+            <text class="chop danger" @tap="removeChain(c)">删除</text>
+          </view>
+        </view>
+        <view v-if="!chains.length" class="card"><view class="emptyline">还没有接龙</view></view>
+
+        <view class="card">
+          <input v-model="chainTitle" class="ainput block" placeholder="接龙标题，如「周六爬山报名」" />
+          <view class="abtn" @tap="addChain">发起接龙</view>
+        </view>
+      </view>
+
       <!-- 工具编辑 -->
       <view v-if="showTools" class="mask" @tap="showTools = false" />
       <view class="sheet" :class="{ open: showTools }">
@@ -232,18 +369,48 @@
           <view class="abtn small" @tap="addCustomTool">新建</view>
         </view>
       </view>
+
+      <!-- 集体待办提醒 -->
+      <view v-if="remindFor" class="mask" @tap="remindFor = null" />
+      <view class="sheet" :class="{ open: !!remindFor }">
+        <block v-if="remindFor">
+          <view class="shead">
+            <text class="stitle">设置提醒</text>
+            <text class="sdone" @tap="saveRemind">{{ remindDry ? '补充并开启' : '开启' }}</text>
+          </view>
+          <view class="rtitle">{{ remindFor.title }}</view>
+          <picker mode="date" :value="rdate" @change="onRDate">
+            <view class="pickrow"><text class="pk">日期</text><text>{{ rdate }}</text><text class="arr">›</text></view>
+          </picker>
+          <picker mode="time" :value="rtime" @change="onRTime">
+            <view class="pickrow"><text class="pk">时间</text><text>{{ rtime }}</text><text class="arr">›</text></view>
+          </picker>
+          <view class="hint">到点以微信服务通知提醒你（一次授权推送一次；22:00–08:00 顺延到次日 8 点）。组内其他成员需自行设置。</view>
+          <view v-if="remindDry" class="hint dry-hint">这条提醒的推送额度已用完，需要再授权一次。</view>
+          <view v-if="remindId" class="cancel-remind" @tap="cancelRemind">取消提醒</view>
+        </block>
+      </view>
     </block>
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { onLoad, onShareAppMessage } from '@dcloudio/uni-app';
+import { computed, ref, watch } from 'vue';
+import { onHide, onLoad, onShareAppMessage, onShow, onUnload } from '@dcloudio/uni-app';
 import { getToken, getUserId, request } from '@/api/request';
 import { useAuthGate } from '@/composables/useAuthGate';
+import { authWithHint, isTemplateConfigured } from '@/utils/reminderAuth';
 
 interface Member { id: string; role: string; user: { id: string; nickname: string | null; avatarUrl: string | null } }
 interface GroupTodo { id: string; title: string; done: boolean }
+interface Reminder {
+  id: string;
+  toolType: string;
+  targetId: string;
+  remindAt: string;
+  remain: number;
+  status: string;
+}
 interface GroupDetail {
   id: string;
   name: string;
@@ -258,6 +425,28 @@ interface ToolDef { key: string; label: string; kind: string; ph?: string; noteP
 interface Expense { id: string; title: string; amount: string | number; payerId: string }
 interface GroupEvent { id: string; title: string; startAt: string; place: string }
 interface OrderItem { id: string; content: string; done: boolean }
+interface PollOption { id: string; content: string; count: number }
+interface Poll {
+  id: string;
+  question: string;
+  multi: boolean;
+  deadline: string | null;
+  createdBy: string;
+  closed: boolean;
+  votedCount: number;
+  myOptionIds: string[];
+  options: PollOption[];
+}
+interface GroupCountdownItem { id: string; name: string; targetDate: string }
+interface ChainEntry { id: string; userId: string; remark: string; createdAt: string }
+interface GroupChain {
+  id: string;
+  title: string;
+  closed: boolean;
+  createdBy: string;
+  entries: ChainEntry[];
+  myEntry: ChainEntry | null;
+}
 interface ScoreRow { userId: string; nickname: string | null; score: number }
 interface ExpenseSummary {
   total: number;
@@ -280,6 +469,9 @@ const PRESETS: ToolDef[] = [
   { key: 'parcel', label: '快递', kind: 'parcel', ph: '物品', notePh: '快递单号' },
   { key: 'duty', label: '值日', kind: 'duty', ph: '谁做什么' },
   { key: 'wish', label: '愿望', kind: 'wish', ph: '想要什么' },
+  { key: 'poll', label: '投票', kind: 'poll' },
+  { key: 'countdown', label: '倒数日', kind: 'countdown' },
+  { key: 'chain', label: '接龙', kind: 'chain' },
 ];
 const DEFAULT_TOOLS = PRESETS.slice(0, 4);
 
@@ -316,11 +508,22 @@ const expenses = ref<Expense[]>([]);
 const events = ref<GroupEvent[]>([]);
 const orders = ref<OrderItem[]>([]);
 const scores = ref<ScoreRow[]>([]);
+const polls = ref<Poll[]>([]);
+const gcountdowns = ref<GroupCountdownItem[]>([]);
+const chains = ref<GroupChain[]>([]);
+const chainDraft = ref<Record<string, string>>({});
 const summary = ref<ExpenseSummary>({ total: 0, memberCount: 0, myPaid: 0, myShare: 0, balance: 0 });
 
 const showTools = ref(false);
 const draftTools = ref<ToolDef[]>([]);
 const newToolName = ref('');
+
+const reminders = ref<Reminder[]>([]);
+const remindFor = ref<GroupTodo | null>(null);
+const remindId = ref('');
+const remindDry = ref(false);
+const rdate = ref('');
+const rtime = ref('20:00');
 
 const todoDraft = ref('');
 const itemDraft = ref('');
@@ -331,6 +534,23 @@ const exAmount = ref('');
 const evTitle = ref('');
 const evPlace = ref('');
 const evDate = ref('');
+
+/* ---------- 投票 ---------- */
+const voteDraft = ref<Record<string, string[]>>({});
+// 发起投票表单
+const pq = ref('');
+const po = ref(['', '']);
+const pmulti = ref(false);
+const pdl = ref(false);
+const pdDate = ref('');
+const pdTime = ref('20:00');
+
+/* ---------- 群倒数日 ---------- */
+const gcdName = ref('');
+const gcdDate = ref('');
+
+/* ---------- 接龙 ---------- */
+const chainTitle = ref('');
 
 const tools = computed(() => parseTools(group.value?.tools || ''));
 const currentKind = computed(() => tools.value.find((t) => t.key === tab.value)?.kind || 'todo');
@@ -422,6 +642,339 @@ async function load() {
   } catch (e) {
     error.value = (e as Error).message;
   }
+  void loadReminders();
+  void loadPolls();
+  void loadGCountdowns();
+  void loadChains();
+}
+
+/* ---------- 投票 ---------- */
+async function loadPolls(silent = false) {
+  if (!gid.value || !getToken()) return;
+  try {
+    const d = await request<{ list: Poll[] }>(`/groups/${gid.value}/polls`);
+    polls.value = d.list;
+    // 已删除的投票草稿顺手清理
+    const ids = new Set(d.list.map((p) => p.id));
+    for (const k of Object.keys(voteDraft.value)) {
+      if (!ids.has(k)) delete voteDraft.value[k];
+    }
+  } catch {
+    if (!silent) polls.value = [];
+  }
+}
+
+function pollTotal(p: Poll) {
+  return p.options.reduce((s, o) => s + o.count, 0);
+}
+
+function pct(p: Poll, o: PollOption) {
+  const total = pollTotal(p);
+  return total ? Math.round((o.count / total) * 100) : 0;
+}
+
+function mySel(p: Poll): string[] {
+  return voteDraft.value[p.id] ?? p.myOptionIds;
+}
+
+function isSel(p: Poll, o: PollOption) {
+  return mySel(p).includes(o.id);
+}
+
+function tapOption(p: Poll, o: PollOption) {
+  if (p.closed) return;
+  const cur = [...mySel(p)];
+  if (p.multi) {
+    voteDraft.value[p.id] = cur.includes(o.id)
+      ? cur.filter((x) => x !== o.id)
+      : [...cur, o.id];
+  } else {
+    voteDraft.value[p.id] = cur.length === 1 && cur[0] === o.id ? [] : [o.id];
+  }
+}
+
+function deadlineText(p: Poll) {
+  if (!p.deadline) return '不限时';
+  if (p.closed) return '';
+  const ms = new Date(p.deadline).getTime() - Date.now();
+  if (ms <= 0) return '';
+  const h = Math.floor(ms / 3600000);
+  if (h < 1) return `· ${Math.max(1, Math.floor(ms / 60000))} 分钟后截止`;
+  if (h < 24) return `· ${h} 小时后截止`;
+  return `· ${Math.floor(h / 24)} 天后截止`;
+}
+
+async function submitVote(p: Poll) {
+  if (!group.value || p.closed) return;
+  const sel = mySel(p);
+  if (!sel.length) {
+    uni.showToast({ title: '先选一个选项', icon: 'none' });
+    return;
+  }
+  try {
+    await request(`/groups/${group.value.id}/polls/${p.id}/vote`, {
+      method: 'POST',
+      data: { optionIds: sel },
+    });
+    uni.showToast({ title: p.myOptionIds.length ? '已重新投票' : '已投票', icon: 'none' });
+    await loadPolls(true);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+    await loadPolls(true);
+  }
+}
+
+async function removePoll(p: Poll) {
+  if (!group.value) return;
+  const res = await new Promise<{ confirm: boolean }>((resolve) => {
+    uni.showModal({
+      title: '删除投票',
+      content: `「${p.question}」及其全部票数将被删除`,
+      success: (r) => resolve({ confirm: r.confirm }),
+    });
+  });
+  if (!res.confirm) return;
+  try {
+    await request(`/groups/${group.value.id}/polls/${p.id}`, { method: 'DELETE' });
+    polls.value = polls.value.filter((x) => x.id !== p.id);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+function onPMulti(e: any) {
+  pmulti.value = Boolean(e.detail.value);
+}
+function onPDL(e: any) {
+  pdl.value = Boolean(e.detail.value);
+}
+function onPdDate(e: any) {
+  pdDate.value = e.detail.value;
+}
+function onPdTime(e: any) {
+  pdTime.value = e.detail.value;
+}
+
+async function addPoll() {
+  const question = pq.value.trim();
+  if (!question) {
+    uni.showToast({ title: '填个问题', icon: 'none' });
+    return;
+  }
+  const options = [...new Set(po.value.map((s) => s.trim()).filter(Boolean))];
+  if (options.length < 2) {
+    uni.showToast({ title: '至少 2 个选项', icon: 'none' });
+    return;
+  }
+  if (!group.value) return;
+
+  let deadline: string | undefined;
+  if (pdl.value) {
+    if (!pdDate.value) {
+      uni.showToast({ title: '选截止日期', icon: 'none' });
+      return;
+    }
+    const t = new Date(`${pdDate.value}T${pdTime.value}:00`).getTime();
+    if (Number.isNaN(t) || t <= Date.now()) {
+      uni.showToast({ title: '截止时间要晚于现在', icon: 'none' });
+      return;
+    }
+    deadline = new Date(t).toISOString();
+  }
+
+  try {
+    await request(`/groups/${group.value.id}/polls`, {
+      method: 'POST',
+      data: { question, options, multi: pmulti.value, ...(deadline ? { deadline } : {}) },
+    });
+    pq.value = '';
+    po.value = ['', ''];
+    pmulti.value = false;
+    pdl.value = false;
+    await loadPolls(true);
+    uni.showToast({ title: '已发起', icon: 'none' });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+/* ---------- 群倒数日 ---------- */
+async function loadGCountdowns() {
+  if (!gid.value || !getToken()) return;
+  try {
+    const d = await request<{ list: GroupCountdownItem[] }>(`/groups/${gid.value}/countdowns`);
+    gcountdowns.value = d.list;
+  } catch {
+    /* 静默 */
+  }
+}
+
+function gcdLabel(iso: string) {
+  const t = new Date(iso);
+  t.setHours(0, 0, 0, 0);
+  const n = new Date();
+  n.setHours(0, 0, 0, 0);
+  const d = Math.round((t.getTime() - n.getTime()) / 86400000);
+  if (d === 0) return '就是今天';
+  return d > 0 ? `还有 ${d} 天` : `已过 ${-d} 天`;
+}
+
+function onGcdDate(e: any) {
+  gcdDate.value = e.detail.value;
+}
+
+async function addGCountdown() {
+  const name = gcdName.value.trim();
+  if (!name || !group.value) {
+    if (!name) uni.showToast({ title: '填个名称', icon: 'none' });
+    return;
+  }
+  if (!gcdDate.value) {
+    uni.showToast({ title: '选个日期', icon: 'none' });
+    return;
+  }
+  try {
+    await request(`/groups/${group.value.id}/countdowns`, {
+      method: 'POST',
+      data: { name, targetDate: gcdDate.value },
+    });
+    gcdName.value = '';
+    await loadGCountdowns();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+async function removeGCountdown(c: GroupCountdownItem) {
+  if (!group.value) return;
+  const res = await new Promise<{ confirm: boolean }>((resolve) => {
+    uni.showModal({
+      title: '删除倒数日',
+      content: `「${c.name}」将被删除`,
+      success: (r) => resolve({ confirm: r.confirm }),
+    });
+  });
+  if (!res.confirm) return;
+  try {
+    await request(`/groups/${group.value.id}/countdowns/${c.id}`, { method: 'DELETE' });
+    gcountdowns.value = gcountdowns.value.filter((x) => x.id !== c.id);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+/* ---------- 接龙 ---------- */
+async function loadChains() {
+  if (!gid.value || !getToken()) return;
+  try {
+    const d = await request<{ list: GroupChain[] }>(`/groups/${gid.value}/chains`);
+    chains.value = d.list;
+  } catch {
+    /* 静默 */
+  }
+}
+
+const myUserId = computed(() => getUserId() || '');
+
+function chainName(userId: string) {
+  if (userId === myUserId.value) return '我';
+  const m = group.value?.members.find((x) => x.user?.id === userId);
+  return m?.user?.nickname || '成员';
+}
+
+function canManageChain(c: GroupChain) {
+  return Boolean(group.value && (c.createdBy === myUserId.value || group.value.ownerId === myUserId.value));
+}
+
+async function addChain() {
+  const title = chainTitle.value.trim();
+  if (!title || !group.value) {
+    if (!title) uni.showToast({ title: '填个标题', icon: 'none' });
+    return;
+  }
+  try {
+    await request(`/groups/${group.value.id}/chains`, { method: 'POST', data: { title } });
+    chainTitle.value = '';
+    await loadChains();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+async function joinChain(c: GroupChain) {
+  if (!group.value) return;
+  try {
+    await request(`/groups/${group.value.id}/chains/${c.id}/entries`, {
+      method: 'POST',
+      data: { remark: (chainDraft.value[c.id] || '').trim() },
+    });
+    chainDraft.value[c.id] = '';
+    await loadChains();
+    uni.showToast({ title: c.myEntry ? '已更新' : '接龙成功', icon: 'none' });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+/** 长按条目：自己的可退；发起人/群主可清任意条目 */
+async function quitChain(c: GroupChain, e: ChainEntry) {
+  if (!group.value) return;
+  if (e.userId !== myUserId.value && !canManageChain(c)) return;
+  const mine = e.userId === myUserId.value;
+  const res = await new Promise<{ confirm: boolean }>((resolve) => {
+    uni.showModal({
+      title: mine ? '退出接龙' : '移除该条目',
+      content: mine ? '确定退出这个接龙吗？' : `移除 ${chainName(e.userId)} 的接龙？`,
+      success: (r) => resolve({ confirm: r.confirm }),
+    });
+  });
+  if (!res.confirm) return;
+  try {
+    await request(`/groups/${group.value.id}/chains/${c.id}/entries/${e.id}`, { method: 'DELETE' });
+    await loadChains();
+  } catch (err) {
+    uni.showToast({ title: (err as Error).message, icon: 'none' });
+  }
+}
+
+async function toggleChain(c: GroupChain) {
+  if (!group.value) return;
+  try {
+    await request(`/groups/${group.value.id}/chains/${c.id}`, {
+      method: 'PATCH',
+      data: { closed: !c.closed },
+    });
+    await loadChains();
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+async function removeChain(c: GroupChain) {
+  if (!group.value) return;
+  const res = await new Promise<{ confirm: boolean }>((resolve) => {
+    uni.showModal({
+      title: '删除接龙',
+      content: `「${c.title}」及其全部条目将被删除`,
+      success: (r) => resolve({ confirm: r.confirm }),
+    });
+  });
+  if (!res.confirm) return;
+  try {
+    await request(`/groups/${group.value.id}/chains/${c.id}`, { method: 'DELETE' });
+    chains.value = chains.value.filter((x) => x.id !== c.id);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+async function loadReminders() {
+  try {
+    const d = await request<{ list: Reminder[] }>('/reminders');
+    reminders.value = d.list;
+  } catch {
+    reminders.value = [];
+  }
 }
 
 let joined = false;
@@ -476,6 +1029,103 @@ async function removeTodo(t: GroupTodo) {
   try {
     await request(`/groups/${group.value.id}/todos/${t.id}`, { method: 'DELETE' });
     group.value.todos = group.value.todos.filter((x) => x.id !== t.id);
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+/* ---------- 集体待办提醒（PRD D12：group_todo 可推送）---------- */
+/** 铃铛三态：亮 = 额度充足，虚 = 额度耗尽待补充 */
+function bellClass(id: string) {
+  const r = reminders.value.find(
+    (x) => x.toolType === 'group_todo' && x.targetId === id && x.status === 'pending'
+  );
+  if (!r) return '';
+  return r.remain > 0 ? 'on' : 'dry';
+}
+
+function openRemind(t: GroupTodo) {
+  const p = (n: number) => String(n).padStart(2, '0');
+  const existing = reminders.value.find(
+    (r) => r.toolType === 'group_todo' && r.targetId === t.id && r.status === 'pending'
+  );
+
+  if (existing) {
+    const d = new Date(existing.remindAt);
+    rdate.value = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    rtime.value = `${p(d.getHours())}:${p(d.getMinutes())}`;
+    remindId.value = existing.id;
+    remindDry.value = existing.remain <= 0;
+  } else {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    rdate.value = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    rtime.value = '20:00';
+    remindId.value = '';
+    remindDry.value = false;
+  }
+  remindFor.value = t;
+}
+
+function onRDate(e: any) {
+  rdate.value = e.detail.value;
+}
+function onRTime(e: any) {
+  rtime.value = e.detail.value;
+}
+
+async function saveRemind() {
+  if (!remindFor.value) return;
+  const remindAt = new Date(`${rdate.value}T${rtime.value}:00`).toISOString();
+  const editing = Boolean(remindId.value);
+  const needGrant = editing && remindDry.value;
+
+  if (!editing || needGrant) {
+    if (!isTemplateConfigured()) {
+      uni.showModal({
+        title: '提醒推送暂未开通',
+        content: '微信推送服务开通前，暂时无法设置到点提醒。',
+        showCancel: false,
+      });
+      return;
+    }
+    if (!(await authWithHint())) {
+      uni.showToast({ title: '需要允许通知才能推送', icon: 'none' });
+      return;
+    }
+  }
+
+  try {
+    if (editing) {
+      await request(`/reminders/${remindId.value}`, { method: 'PATCH', data: { remindAt } });
+      if (needGrant) {
+        await request(`/reminders/${remindId.value}/grant`, { method: 'POST' });
+      }
+    } else {
+      await request('/reminders', {
+        method: 'POST',
+        data: { toolType: 'group_todo', targetId: remindFor.value.id, remindAt },
+      });
+    }
+    remindFor.value = null;
+    remindId.value = '';
+    remindDry.value = false;
+    await loadReminders();
+    uni.showToast({ title: needGrant ? '已补充并改期' : editing ? '已改期' : '提醒已设置', icon: 'none' });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
+async function cancelRemind() {
+  if (!remindId.value) return;
+  try {
+    await request(`/reminders/${remindId.value}`, { method: 'DELETE' });
+    remindId.value = '';
+    remindDry.value = false;
+    remindFor.value = null;
+    await loadReminders();
+    uni.showToast({ title: '已取消提醒', icon: 'none' });
   } catch (e) {
     uni.showToast({ title: (e as Error).message, icon: 'none' });
   }
@@ -780,7 +1430,44 @@ onLoad((q) => {
   gid.value = params?.id || '';
   inviteFromLink.value = params?.invite || '';
   evDate.value = todayStr();
+  // 投票默认截止：明天 20:00
+  const tmr = new Date();
+  tmr.setDate(tmr.getDate() + 1);
+  const p = (n: number) => String(n).padStart(2, '0');
+  pdDate.value = `${tmr.getFullYear()}-${p(tmr.getMonth() + 1)}-${p(tmr.getDate())}`;
+  gcdDate.value = todayStr();
 });
+
+/* ---------- 投票实时刷新：停在投票 tab 时每 10 秒拉一次 ---------- */
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+function stopPollTimer() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function startPollTimer() {
+  if (currentKind.value !== 'poll' || !getToken()) return;
+  stopPollTimer();
+  pollTimer = setInterval(() => void loadPolls(true), 10000);
+}
+
+watch(currentKind, (k) => {
+  stopPollTimer();
+  if (k === 'poll' && getToken()) {
+    void loadPolls(true);
+    startPollTimer();
+  }
+});
+
+onShow(() => {
+  // 从别的页面回来时，若正停在投票 tab 则继续实时刷新
+  if (currentKind.value === 'poll') startPollTimer();
+});
+onHide(stopPollTimer);
+onUnload(stopPollTimer);
 
 const { logged } = useAuthGate(boot);
 
@@ -874,6 +1561,12 @@ onShareAppMessage(() => ({
   overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .who { font-size: 9px; color: var(--muted); }
+.bell { margin-left: 4px; font-size: 11px; opacity: .3; }
+.bell.on { opacity: 1; }
+.bell.dry { opacity: .55; border-bottom: 1px dashed var(--muted); }
+.rtitle { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.dry-hint { color: #E03131; }
+.cancel-remind { margin-top: 12px; text-align: center; font-size: 12px; color: #E03131; }
 
 .money { display: flex; align-items: baseline; gap: 4px; }
 .cur { font-size: 11px; color: var(--muted); }
@@ -933,6 +1626,85 @@ onShareAppMessage(() => ({
   font-size: 10px; color: var(--muted);
 }
 .sbtn.plus { background: rgba(59, 91, 219, .1); border-color: transparent; color: var(--accent); font-weight: 600; }
+
+/* ===== 投票 ===== */
+.pollhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.pq { flex: 1; font-size: 13px; font-weight: 600; color: var(--fg); line-height: 1.5; }
+.pstate {
+  flex: 0 0 auto; padding: 2px 8px; border-radius: 999px;
+  font-size: 9px; color: #37B24D; background: rgba(55, 178, 77, .12);
+}
+.pstate.off { color: var(--muted); background: var(--bg); }
+.pmeta { margin-top: 5px; font-size: 9.5px; color: var(--muted); }
+.pdl { margin-left: 2px; color: #F59F00; }
+
+.popt { display: flex; align-items: flex-start; gap: 9px; padding: 9px 0 2px; }
+.poind {
+  width: 17px; height: 17px; margin-top: 1px; flex: 0 0 17px;
+  border-radius: 50%; border: 1.4px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: #fff;
+}
+.poind.multi { border-radius: 5px; }
+.poind.on { background: var(--accent); border-color: transparent; }
+.poind.dim { opacity: .55; }
+.pobody { flex: 1; min-width: 0; }
+.porowline { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.potext { flex: 1; font-size: 11.5px; color: var(--fg); }
+.pocount { flex: 0 0 auto; font-size: 9.5px; color: var(--muted); }
+.pobar { margin-top: 5px; height: 6px; border-radius: 3px; background: var(--bg); overflow: hidden; }
+.pobar-in {
+  height: 100%; border-radius: 3px; background: rgba(59, 91, 219, .45);
+  transition: width .5s ease;
+}
+.pobar-in.mine { background: var(--accent); }
+.pbtn {
+  margin-top: 12px; padding: 8px 0; text-align: center;
+  border-radius: 10px; background: var(--grad); color: #fff;
+  font-size: 11.5px; font-weight: 600;
+}
+.pbtn.dim { opacity: .45; }
+
+.porow-i { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.porow-i .ainput { margin-bottom: 0; }
+.pflex { flex: 1; }
+.podel { width: 26px; text-align: center; font-size: 12px; color: var(--muted); padding: 4px; }
+.poadd { margin-top: 8px; font-size: 11px; color: var(--accent); }
+.poptrow {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 12px; font-size: 12px;
+}
+.pklbl { color: var(--fg); }
+
+/* ===== 群倒数日 ===== */
+.gcd { display: flex; flex-direction: column; padding: 4px 2px; }
+.gname2 { font-size: 12.5px; font-weight: 600; color: var(--fg); }
+.gdays { margin-top: 10px; font-size: 18px; font-weight: 600; color: var(--accent); }
+.gdate { margin-top: 6px; font-size: 9.5px; color: var(--muted); }
+
+/* ===== 接龙 ===== */
+.chlist { margin-top: 4px; }
+.chrow {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 8px 6px; border-bottom: 1px solid var(--line);
+}
+.chrow:last-child { border-bottom: none; }
+.chrow.mine .chname { color: var(--accent); font-weight: 600; }
+.chno { width: 18px; flex: 0 0 18px; font-size: 10px; color: var(--muted); }
+.chname { font-size: 11.5px; color: var(--fg); }
+.chremark { flex: 1; font-size: 10.5px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+.chjoin { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.chjoin .ainput { flex: 1; margin-top: 0; }
+.chbtn {
+  flex: 0 0 auto; padding: 0 14px; height: 38px; line-height: 38px;
+  border-radius: 999px; background: var(--grad); color: #fff;
+  font-size: 11.5px; font-weight: 600;
+}
+.chbtn.ghost { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.chmanage { display: flex; justify-content: flex-end; gap: 16px; margin-top: 10px; }
+.chop { font-size: 10.5px; color: var(--muted); }
+.chop.danger { color: #E03131; }
 
 /* ===== 工具选择 ===== */
 .mask { position: fixed; inset: 0; background: rgba(22, 32, 58, .32); z-index: 90; }

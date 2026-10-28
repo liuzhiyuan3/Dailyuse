@@ -1,4 +1,6 @@
+<!-- @license lucide-static v0.462.0 - ISC -->
 <svg
+  class="lucide lucide-utensils"
   xmlns="http://www.w3.org/2000/svg"
   width="24"
   height="24"
@@ -8,8 +10,8 @@
   stroke-width="2"
   stroke-linecap="round"
   stroke-linejoin="round"
-  class="icon icon-tabler icons-tabler-outline icon-tabler-tools-kitchen-2"
 >
-  <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-  <path d="M19 3v12h-5c-.023 -3.681 .184 -7.406 5 -12m0 12v6h-1v-3m-10 -14v17m-3 -17v3a3 3 0 1 0 6 0v-3" />
+  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+  <path d="M7 2v20" />
+  <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
 </svg>

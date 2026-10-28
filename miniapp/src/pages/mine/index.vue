@@ -35,6 +35,7 @@
     </view>
 
     <view class="logout" @tap="doLogout">退出登录</view>
+    <view class="danger" @tap="deleteAccount">删除账号与数据</view>
     <view class="ver">Dailyuse v0.1.0</view>
     </block>
   </view>
@@ -94,26 +95,18 @@ const { logged } = useAuthGate(loadAll);
 
 const menus = [
   { icon: '🔔', t: '提醒设置' },
-  { icon: '📰', t: '我的订阅' },
   { icon: '👥', t: '我的群组' },
+  { icon: '📢', t: '消息通知' },
   { icon: '📤', t: '数据导出' },
   { icon: 'ℹ️', t: '关于' },
 ];
 
-/** 未开通时把升级入口顶到最前面 */
-const menuList = computed(() =>
-  isPro.value ? menus : [{ icon: '💎', t: '升级专业版' }, ...menus]
-);
+const isAdmin = computed(() => profile.value.isAdmin === true);
 
-function upgrade() {
-  // 支付还没接：这里保持诚实的提示，别做成假按钮
-  uni.showModal({
-    title: '专业版',
-    content: '支付通道尚未接入。当前可用 npm run tier 手动开通，用于联调付费门禁。',
-    showCancel: false,
-    confirmText: '知道了',
-  });
-}
+const menuList = computed(() => {
+  // 管理员才看得见后台入口（权限本身在服务端 requireAdmin 再验一遍）
+  return isAdmin.value ? [{ icon: '🛠️', t: '管理后台' }, ...menus] : menus;
+});
 
 // 昵称：用微信原生的 nickname 输入能力，避免自己造 profile 授权（已废弃）
 function editNickname() {
@@ -145,12 +138,16 @@ function doLogout() {
     confirmColor: '#E03131',
     success: (res) => {
       if (!res.confirm) return;
-      clearToken();
-      void request('/auth/logout', { method: 'POST' }).catch(() => {});
-      profile.value = {};
-      quota.value = 0;
-      logged.value = false;
-      uni.showToast({ title: '已退出', icon: 'none' });
+      // 先带着 token 调登出接口，再清本地登录态
+      void request('/auth/logout', { method: 'POST' })
+        .catch(() => {})
+        .finally(() => {
+          clearToken();
+          profile.value = {};
+          quota.value = 0;
+          logged.value = false;
+          uni.showToast({ title: '已退出', icon: 'none' });
+        });
     },
   });
 }
@@ -158,20 +155,51 @@ function doLogout() {
 const menuRoutes: Record<string, string> = {
   提醒设置: '/pages/mine/reminders',
   我的群组: '/pages/group/index',
-  我的订阅: '/pages/news/subscribes',
+  消息通知: '/pages/mine/announcements',
+  管理后台: '/pages/admin/index',
+  数据导出: '/pages/mine/export',
+  关于: '/pages/mine/about',
 };
 
 function todo(name: string) {
-  if (name === '升级专业版') {
-    upgrade();
-    return;
-  }
   const url = menuRoutes[name];
   if (url) {
     uni.navigateTo({ url });
     return;
   }
   uni.showToast({ title: `${name}（建设中）`, icon: 'none' });
+}
+
+/** 注销账号：两步确认，服务端级联删除全部个人数据 */
+function deleteAccount() {
+  uni.showModal({
+    title: '删除账号',
+    content: '将删除你的全部数据（待办、便签、记账、倒数日、提醒），不可恢复。名下群组会被解散。',
+    confirmText: '继续',
+    confirmColor: '#E03131',
+    success: (res) => {
+      if (!res.confirm) return;
+      uni.showModal({
+        title: '确认删除',
+        content: '最后确认：删除后无法找回。建议先到「数据导出」备份。',
+        confirmText: '删除账号',
+        confirmColor: '#E03131',
+        success: async (res2) => {
+          if (!res2.confirm) return;
+          try {
+            await request('/auth/me', { method: 'DELETE' });
+            clearToken();
+            profile.value = {};
+            quota.value = 0;
+            logged.value = false;
+            uni.showToast({ title: '账号已删除', icon: 'none' });
+          } catch (e) {
+            uni.showToast({ title: (e as Error).message.slice(0, 40), icon: 'none' });
+          }
+        },
+      });
+    },
+  });
 }
 </script>
 
@@ -257,5 +285,6 @@ function todo(name: string) {
   background: var(--card); border: 1px solid var(--line);
   border-radius: var(--radius);
 }
+.danger { margin-top: 8px; text-align: center; font-size: 10.5px; color: var(--muted); }
 .ver { margin-top: 24px; text-align: center; font-size: 10px; color: var(--muted); }
 </style>

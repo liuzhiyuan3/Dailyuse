@@ -1,87 +1,9 @@
-const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api';
-const TOKEN_KEY = 'dailyuse_token';
-const USER_KEY = 'dailyuse_user_id';
+// 面向业务的登录态 API：登录闸门、微信登录、资料读写。
+// 底层 request/token 存取在 api/http.ts；游客数据合并在 utils/localData.ts
+import { mergeLocalData } from '@/utils/localData';
+import { isLoggedIn, request, setToken } from './http';
 
-export function getToken(): string {
-  return uni.getStorageSync(TOKEN_KEY) || '';
-}
-
-export function getUserId(): string {
-  return uni.getStorageSync(USER_KEY) || '';
-}
-
-export function isLoggedIn(): boolean {
-  return Boolean(getToken());
-}
-
-export function setToken(token: string, userId?: string) {
-  uni.setStorageSync(TOKEN_KEY, token);
-  if (userId) uni.setStorageSync(USER_KEY, userId);
-}
-
-export function clearToken() {
-  uni.removeStorageSync(TOKEN_KEY);
-  uni.removeStorageSync(USER_KEY);
-}
-
-interface ApiResp<T> {
-  code: number;
-  data: T;
-  message?: string;
-}
-
-/** 401 统一处理：清 token + 广播，页面据此切到登录引导 */
-function handleUnauthorized() {
-  clearToken();
-  uni.$emit('need-login');
-}
-
-export function request<T>(path: string, options: Partial<UniApp.RequestOptions> = {}): Promise<T> {
-  const token = getToken();
-  const hasBody = options.data !== undefined && options.data !== null;
-
-  return new Promise((resolve, reject) => {
-    uni.request({
-      url: `${BASE}${path}`,
-      method: (options.method as any) || 'GET',
-      data: options.data,
-      header: {
-        // 无 body 时不发 Content-Type，避免服务端把空 JSON 判成 400
-        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(options.header || {}),
-      },
-      success: (res) => {
-        const body = res.data as ApiResp<T>;
-
-        if (res.statusCode === 401) {
-          handleUnauthorized();
-          const err = new Error('登录已过期，请重新登录') as Error & { code?: number };
-          err.code = 401;
-          reject(err);
-          return;
-        }
-
-        // 402：付费门禁。文案与服务端保持一致，界面据此引导升级。
-        if (res.statusCode === 402) {
-          const err = new Error(body?.message || '该功能需要专业版') as Error & { code?: number };
-          err.code = 402;
-          uni.$emit('need-pro', body?.data);
-          reject(err);
-          return;
-        }
-
-        if (res.statusCode >= 400 || (body && body.code !== 0)) {
-          reject(new Error(body?.message || `请求失败 ${res.statusCode}`));
-          return;
-        }
-
-        resolve(body.data);
-      },
-      fail: (err) => reject(new Error(err.errMsg || '网络异常')),
-    });
-  });
-}
+export { getToken, getUserId, isLoggedIn, setToken, clearToken, request } from './http';
 
 let prompting = false;
 
@@ -139,6 +61,8 @@ export interface Me {
   avatarUrl: string | null;
   createdAt?: string;
   entitlement?: Entitlement;
+  /** 管理后台入口显隐用；真正权限在服务端 requireAdmin */
+  isAdmin?: boolean;
 }
 
 export interface LoginResult {
@@ -159,6 +83,13 @@ export function login(): Promise<LoginResult> {
             data: { code: res.code },
           });
           setToken(data.token, data.user?.id);
+          // 登录态就绪后，把游客期间攒在本机的数据一次性并入云端（PRD §6.5）
+          try {
+            const merged = await mergeLocalData();
+            if (merged > 0) uni.showToast({ title: `已同步 ${merged} 条本机数据`, icon: 'none' });
+          } catch {
+            /* 合并失败不阻断登录，本机数据保留待下次重试 */
+          }
           resolve(data);
         } catch (e) {
           reject(e);

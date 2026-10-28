@@ -5,17 +5,22 @@
       <view v-if="!list.length" class="empty">
         <text class="eico">🔔</text>
         <text class="et">还没有提醒</text>
-        <text class="es">在待办或倒数日里点铃铛设置</text>
+        <text class="es">在待办、便签或倒数日里点铃铛设置</text>
       </view>
 
       <view v-else class="list">
         <view v-for="r in list" :key="r.id" class="row">
           <view class="left">
-            <text class="rt">{{ typeLabel(r.toolType) }}</text>
+            <text class="rt">{{ typeLabel(r.toolType) }}{{ repeatLabel(r.repeat) }}</text>
             <text class="rs">{{ fmt(r.remindAt) }}</text>
           </view>
           <view class="right">
-            <text class="badge" :class="r.status">{{ statusLabel(r) }}</text>
+            <text class="badge" :class="[r.status, { dry: r.status === 'pending' && r.remain <= 0 }]">{{ statusLabel(r) }}</text>
+            <text
+              v-if="r.status === 'pending' && r.remain <= 0"
+              class="grant"
+              @tap="grant(r)"
+            >补充</text>
             <text class="del" @tap="remove(r)">删除</text>
           </view>
         </view>
@@ -28,6 +33,7 @@
 import { ref } from 'vue';
 import { request } from '@/api/request';
 import { useAuthGate } from '@/composables/useAuthGate';
+import { authWithHint, isTemplateConfigured, silentTopUp, templateOf } from '@/utils/reminderAuth';
 
 interface Reminder {
   id: string;
@@ -36,6 +42,7 @@ interface Reminder {
   remindAt: string;
   remain: number;
   status: string;
+  repeat?: string;
 }
 
 const list = ref<Reminder[]>([]);
@@ -44,7 +51,14 @@ function typeLabel(t: string) {
   if (t === 'todo') return '待办提醒';
   if (t === 'countdown') return '倒数日提醒';
   if (t === 'group_todo') return '群组待办提醒';
+  if (t === 'note') return '便签提醒';
+  if (t === 'weather') return '天气推送';
   return '提醒';
+}
+
+const repeatNames: Record<string, string> = { daily: ' · 每天', weekly: ' · 每周', monthly: ' · 每月' };
+function repeatLabel(repeat?: string) {
+  return repeat ? repeatNames[repeat] ?? '' : '';
 }
 
 function fmt(iso: string) {
@@ -85,6 +99,34 @@ function remove(r: Reminder) {
   });
 }
 
+/** 额度耗尽后补充：按提醒类型走对应模板授权（天气/便签的模板和待办不同，不能用错）；
+ *  定期提醒顺带静默补到 7 次（约一周） */
+async function grant(r: Reminder) {
+  const tmpl = templateOf(r.toolType);
+  if (!isTemplateConfigured(tmpl)) {
+    uni.showModal({
+      title: '提醒推送暂未开通',
+      content: '微信推送服务开通前，暂时无法设置到点提醒。',
+      showCancel: false,
+    });
+    return;
+  }
+  if (!(await authWithHint(tmpl))) {
+    uni.showToast({ title: '需要允许通知才能推送', icon: 'none' });
+    return;
+  }
+  try {
+    await request(`/reminders/${r.id}/grant`, { method: 'POST' });
+    if (r.repeat) {
+      await silentTopUp(tmpl, r.id, 1, 7);
+    }
+    await load();
+    uni.showToast({ title: '已补充', icon: 'none' });
+  } catch (e) {
+    uni.showToast({ title: (e as Error).message, icon: 'none' });
+  }
+}
+
 const { logged } = useAuthGate(load);
 </script>
 
@@ -100,8 +142,10 @@ const { logged } = useAuthGate(load);
 .right { display: flex; align-items: center; gap: 10px; }
 .badge { font-size: 9.5px; padding: 3px 8px; border-radius: 999px; background: var(--line); color: var(--muted); }
 .badge.pending { background: rgba(59, 91, 219, .1); color: var(--accent); }
+.badge.pending.dry { background: rgba(245, 159, 0, .14); color: #B8860B; }
 .badge.failed { background: rgba(224, 49, 49, .1); color: #E03131; }
 .del { font-size: 10px; color: #E03131; }
+.grant { font-size: 10px; color: var(--accent); font-weight: 600; }
 
 .empty { display: flex; flex-direction: column; align-items: center; padding: 100px 0; }
 .eico { font-size: 34px; opacity: .35; }

@@ -43,7 +43,7 @@ export const foodRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const record = await prisma.foodRecord.create({
-      data: { userId: req.user.sub, kind, content, note: body.note || '' },
+      data: { userId: req.user.sub, kind, content, note: (body.note || '').slice(0, 300) },
     });
     return { code: 0, data: record };
   });

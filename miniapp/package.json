@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test": "node --test scripts/*.test.cjs",
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:mp-weixin": "uni build -p mp-weixin",
-    "check:size": "node scripts/check-size.mjs"
+    "check:size": "node scripts/check-size.mjs",
+    "dev": "node scripts/dev.mjs"
   },
   "dependencies": {
     "@dcloudio/uni-app": "vue3",
@@ -17,6 +19,7 @@
     "@dcloudio/types": "3.4.31",
     "@dcloudio/uni-cli-shared": "vue3",
     "@dcloudio/vite-plugin-uni": "vue3",
+    "miniprogram-automator": "^0.13.0",
     "sharp": "^0.35.5",
     "typescript": "^5.6.0",
     "vite": "5.2.8"

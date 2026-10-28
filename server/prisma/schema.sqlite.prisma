@@ -26,13 +26,15 @@ model User {
   notes      Note[]
   accounts   Account[]
   countdowns Countdown[]
-  subscribes Subscribe[]
+  wheels     Wheel[]
+  habits     Habit[]
   reminders  Reminder[]
   memberships GroupMember[]
   ownedGroups Group[]      @relation("GroupOwner")
   groupTodos  GroupTodo[]
   pushLogs    PushLog[]
   foods       FoodRecord[]
+  feedback    Feedback[]
 
   @@map("users")
 }
@@ -43,6 +45,7 @@ model Todo {
   userId    String   @map("user_id")
   title     String   
   done      Boolean  @default(false)
+  doneAt    DateTime? @map("done_at")
   category  String   @default("default") 
   dueAt     DateTime? @map("due_at")
   createdAt DateTime @default(now()) @map("created_at")
@@ -102,52 +105,154 @@ model Countdown {
   @@map("countdowns")
 }
 
-// ========== 资讯：关键词订阅 ==========
-model Subscribe {
-  id         String   @id @default(uuid())
-  userId     String   @map("user_id")
-  keyword    String   
-  templateId String   @map("template_id") 
-  remain     Int      @default(1)
-  createdAt  DateTime @default(now()) @map("created_at")
+// ========== 工具：转盘 ==========
+// items 为 JSON 字符串数组（自定义选项，2-12 条）
+model Wheel {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String   @default("转盘")
+  items     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, keyword])
-  @@map("subscribes")
+  @@index([userId, updatedAt])
+  @@map("wheels")
 }
 
-// ========== 资讯：新闻缓存 ==========
-model NewsItem {
-  id          String    @id @default(uuid())
-  keyword     String    
-  title       String    
-  summary     String    @default("") 
-  url         String    
-  urlHash     String    @unique @map("url_hash") 
-  source      String    @default("") 
-  publishedAt DateTime? @map("published_at")
-  fetchedAt   DateTime  @default(now()) @map("fetched_at")
+// ========== 工具：打卡 ==========
+// 用户自定义打卡项；记录在 HabitLog（一天一条）
+model Habit {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
 
-  pushLogs PushLog[]
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs HabitLog[]
 
-  @@index([keyword, publishedAt])
-  @@map("news_items")
+  @@index([userId, archived, createdAt])
+  @@map("habits")
 }
 
-// ========== 推送日志（资讯 + 工具提醒） ==========
+model HabitLog {
+  id        String   @id @default(uuid())
+  habitId   String   @map("habit_id")
+  userId    String   @map("user_id")
+  day       DateTime
+  createdAt DateTime @default(now()) @map("created_at")
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, day])
+  @@index([userId, day])
+  @@map("habit_logs")
+}
+
+// ========== 群组：投票 ==========
+model GroupPoll {
+  id        String    @id @default(uuid())
+  groupId   String    @map("group_id")
+  question  String
+  multi     Boolean   @default(false)
+  deadline  DateTime? @map("deadline")
+  createdBy String    @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  group   Group              @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  options GroupPollOption[]
+  votes   GroupPollVote[]
+
+  @@index([groupId, createdAt])
+  @@map("group_polls")
+}
+
+model GroupPollOption {
+  id      String   @id @default(uuid())
+  pollId  String   @map("poll_id")
+  content String
+  sort    Int      @default(0)
+  votes   GroupPollVote[]
+
+  poll GroupPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@index([pollId])
+  @@map("group_poll_options")
+}
+
+// 一人一票（单选）或一人多票（多选）：同一选项一人只投一次
+model GroupPollVote {
+  id        String   @id @default(uuid())
+  pollId    String   @map("poll_id")
+  optionId  String   @map("option_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  poll   GroupPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option GroupPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, userId])
+  @@index([pollId, userId])
+  @@map("group_poll_votes")
+}
+
+// ========== 群组：倒数日 ==========
+model GroupCountdown {
+  id         String   @id @default(uuid())
+  groupId    String   @map("group_id")
+  name       String
+  targetDate DateTime @map("target_date")
+  createdBy  String   @map("created_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, targetDate])
+  @@map("group_countdowns")
+}
+
+// ========== 群组：接龙 ==========
+// 报名/集合接龙：标题 + 按加入顺序编号的条目，一人一条
+model GroupChain {
+  id        String   @id @default(uuid())
+  groupId   String   @map("group_id")
+  title     String
+  closed    Boolean  @default(false)
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group   Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  entries GroupChainEntry[]
+
+  @@index([groupId, createdAt])
+  @@map("group_chains")
+}
+
+model GroupChainEntry {
+  id        String   @id @default(uuid())
+  chainId   String   @map("chain_id")
+  userId    String   @map("user_id")
+  remark    String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  chain GroupChain @relation(fields: [chainId], references: [id], onDelete: Cascade)
+
+  @@unique([chainId, userId])
+  @@map("group_chain_entries")
+}
+
+// ========== 推送日志（工具提醒） ==========
 model PushLog {
   id         String   @id @default(uuid())
   userId     String   @map("user_id")
   channel    String    // news | reminder
-  keyword    String?  
-  newsId     String?  @map("news_id")
   reminderId String?  @map("reminder_id")
   status     String    // sent | failed | skipped
   sentAt     DateTime @default(now()) @map("sent_at")
 
   user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  news NewsItem? @relation(fields: [newsId], references: [id], onDelete: SetNull)
 
   @@index([userId, sentAt])
   @@map("push_logs")
@@ -157,9 +262,17 @@ model PushLog {
 model Reminder {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
-  toolType  String   @map("tool_type")  // todo | countdown | group_todo
+  toolType  String   @map("tool_type")  // todo | countdown | group_todo | note | weather
   targetId  String   @map("target_id")
   remindAt  DateTime @map("remind_at")
+  // 定期提醒：'' | daily | weekly | monthly；空 = 只提醒一次
+  repeat    String   @default("")
+  // 每月重复的原始日期（1-31），短月夹紧后仍能恢复到原日期；旧记录首次发送时补齐
+  repeatDay Int?     @map("repeat_day")
+  // 建提醒时前端授权用的模板 ID；空则推送时回退到 WX_TEMPLATE_ID
+  templateId String  @default("") @map("template_id")
+  // 天气订阅的城市名（toolType=weather 时写，推送时填进「城市」栏目）；其余工具为空
+  city      String?
   remain    Int      @default(1)
   status    String   @default("pending")  // pending | sent | expired | canceled
   createdAt DateTime @default(now()) @map("created_at")
@@ -188,6 +301,9 @@ model Group {
   events   GroupEvent[]
   scores   GroupScore[]
   orders   GroupOrder[]
+  polls   GroupPoll[]
+  countdowns GroupCountdown[]
+  chains  GroupChain[]
 
   @@map("groups")
 }
@@ -309,6 +425,32 @@ model GroupTodo {
 }
 
 // ========== 美食记录 ==========
+// ========== 用户反馈 ==========
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  // bug = 遇到问题 | idea = 功能建议 | tool = 想要的新工具 | other = 其他
+  kind      String
+  content   String
+  status    String   @default("new") // new | handled
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("feedback")
+}
+
+// ========== 管理员公告 ==========
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("announcements")
+}
+
 model FoodRecord {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")

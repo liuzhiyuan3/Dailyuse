@@ -28,13 +28,20 @@ npm run dev:mp-weixin
 
 ## 环境变量
 
-在 `miniapp/.env.local` 里配接口地址（真机调试必须是 HTTPS 域名）：
+生产构建自动读取已提供的 `miniapp/.env.production`：
 
 ```
-VITE_API_BASE=https://你的域名/api
+VITE_API_BASE=https://lzy.benefitgpt.top/api
 ```
 
-不配时默认走 `http://localhost:3000/api`（仅开发者工具、且勾选「不校验合法域名」时可用）。
+`npm run build:mp-weixin` 输出到 `dist/build/mp-weixin`，上传此目录。
+微信后台 request 合法域名填写 `https://lzy.benefitgpt.top`（不带 `/api`）。
+
+本地开发自动读取 `.env.development`，使用 `http://localhost:3000/api`。
+如需真机联调，在被 Git 忽略的 `.env.development.local` 中覆盖地址；
+如需覆盖生产地址，使用 `.env.production.local`。修改环境文件后重新构建。
+
+网页管理后台入口为 `https://admin.benefitgpt.top`，由独立的 Nginx 站点代理。
 
 ## 页面
 

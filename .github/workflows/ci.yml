@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ===== 后端：迁移能否落地 + 类型 + 38 项冒烟 =====
+  # ===== 后端：迁移能否落地 + 类型 + 98 项冒烟 =====
   server:
     runs-on: ubuntu-latest
     defaults:
@@ -35,6 +35,11 @@ jobs:
       SHADOW_DATABASE_URL: postgresql://dailyuse:dailyuse@localhost:5432/dailyuse_shadow
       JWT_SECRET: ci-only-secret-not-for-production
       NODE_ENV: development
+      WX_APPID: test-appid
+      WX_SECRET: test-secret
+      QWEATHER_KEY: test-only
+      QWEATHER_HOST: weather.test
+      WX_WEATHER_TEMPLATE_ID: test-weather-template
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +58,15 @@ jobs:
       - name: 应用迁移（空库建表，验证 migrations 齐全）
         run: npx prisma migrate deploy
 
+      - name: 生成数据库客户端
+        run: npx prisma generate
+
+      - name: 后端与备份回归测试
+        run: |
+          npm test
+          node --test ../deploy/backup.test.cjs
+          bash -n ../deploy/backup.sh
+
       - name: 迁移与 schema 是否一致（改了 schema 却忘了生成迁移就红）
         run: >-
           npx prisma migrate diff
@@ -69,7 +83,7 @@ jobs:
 
       - name: 启动服务
         run: |
-          node dist/index.js > /tmp/api.log 2>&1 &
+          ADMIN_OPENIDS=dev-admin ADMIN_PASSWORD=dev-pass node --require ./scripts/weather-fixture.cjs --require ./scripts/wechat-fixture.cjs dist/index.js > /tmp/api.log 2>&1 &
           for i in $(seq 1 30); do
             if curl -sf http://127.0.0.1:3000/api/health > /dev/null; then
               echo "服务已就绪"; exit 0
@@ -78,8 +92,11 @@ jobs:
           done
           echo "服务启动失败"; tail -50 /tmp/api.log; exit 1
 
-      - name: 接口冒烟（38 项）
+      - name: 接口冒烟（98 项）
         run: npm run smoke
+
+      - name: 内容发布链路冒烟
+        run: node scripts/content-smoke.mjs
 
       - name: 失败时打印服务日志
         if: failure()
@@ -105,6 +122,9 @@ jobs:
 
       - name: 构建（生产模式）
         run: npm run build:mp-weixin
+
+      - name: 页面与游客同步回归测试
+        run: npm test
 
       - name: 包体预算（主包 2MB 硬限，这里卡 1.5MB）
         run: npm run check:size

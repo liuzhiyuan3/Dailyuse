@@ -56,4 +56,20 @@ export default fp(async (app) => {
       });
     }
   });
+
+  /**
+   * 管理员守卫，两种身份二选一：
+   * - 小程序：openid 在 ADMIN_OPENIDS 白名单里
+   * - 网页后台：/admin 页用 ADMIN_PASSWORD 换来的 admin token（payload.admin === true）
+   */
+  app.decorate('requireAdmin', async (req, reply) => {
+    try {
+      await req.jwtVerify();
+    } catch {
+      return reply.code(401).send({ code: 401, message: '未登录或登录已过期' });
+    }
+    if (req.user.admin === true) return;
+    if (req.user.openid && config.adminOpenids.includes(req.user.openid)) return;
+    return reply.code(403).send({ code: 403, message: '需要管理员权限' });
+  });
 });

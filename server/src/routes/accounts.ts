@@ -58,8 +58,11 @@ export const accountRoutes: FastifyPluginAsync = async (app) => {
     if (!body.type || !['income', 'expense'].includes(body.type)) {
       return reply.code(400).send({ code: 400, message: '类型必须是 income 或 expense' });
     }
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1e9) {
       return reply.code(400).send({ code: 400, message: '金额必须大于 0' });
+    }
+    if (body.occurredAt && Number.isNaN(Date.parse(body.occurredAt))) {
+      return reply.code(400).send({ code: 400, message: '日期不合法' });
     }
 
     const account = await prisma.account.create({
@@ -67,8 +70,8 @@ export const accountRoutes: FastifyPluginAsync = async (app) => {
         userId: req.user.sub,
         type: body.type,
         amount,
-        category: body.category || '其他',
-        remark: body.remark || '',
+        category: (body.category || '其他').slice(0, 32),
+        remark: (body.remark || '').slice(0, 200),
         ...(body.occurredAt ? { occurredAt: new Date(body.occurredAt) } : {}),
       },
     });
@@ -94,13 +97,13 @@ export const accountRoutes: FastifyPluginAsync = async (app) => {
     }
     if (body.amount !== undefined) {
       const amount = Number(body.amount);
-      if (!Number.isFinite(amount) || amount <= 0) {
+      if (!Number.isFinite(amount) || amount <= 0 || amount > 1e9) {
         return reply.code(400).send({ code: 400, message: '金额必须大于 0' });
       }
       data.amount = amount;
     }
-    if (typeof body.category === 'string') data.category = body.category;
-    if (typeof body.remark === 'string') data.remark = body.remark;
+    if (typeof body.category === 'string') data.category = body.category.slice(0, 32);
+    if (typeof body.remark === 'string') data.remark = body.remark.slice(0, 200);
     if (typeof body.occurredAt === 'string') {
       if (Number.isNaN(Date.parse(body.occurredAt))) {
         return reply.code(400).send({ code: 400, message: '日期不合法' });

@@ -1,9 +1,9 @@
 import { prisma } from './plugins/db';
-import { refreshKeyword } from './lib/news';
 import { sendSubscribeMessage } from './lib/wechat';
-import { config, wxConfigured } from './config';
+import { getWeatherNow } from './lib/qweather';
+import { config } from './config';
+import { nextOccurrence, repeatDayInTimezone } from './lib/reminderSchedule';
 
-const NEWS_INTERVAL = 30 * 60 * 1000;
 const REMINDER_INTERVAL = 60 * 1000;
 
 /** 按配置时区取小时（容器默认 UTC，不能直接用 getHours） */
@@ -16,87 +16,21 @@ function hourInTz(d = new Date()) {
   return Number(h);
 }
 
+/** 按配置时区取 YYYY-MM-DD（天气模板的日期栏目用） */
+function dateInTz(d = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: config.timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
 function inQuietHours(d = new Date()) {
   const h = hourInTz(d);
   const { quietStartHour: s, quietEndHour: e } = config.push;
   if (s === e) return false;
   return s < e ? h >= s && h < e : h >= s || h < e;
-}
-
-/** 资讯：抓取被订阅的关键词 → 有新增 → 消耗额度推送 */
-async function newsJob(logger: { info: (m: string) => void; error: (e: unknown) => void }) {
-  const subs = await prisma.subscribe.findMany({ where: { remain: { gt: 0 } } });
-  const keywords = [...new Set(subs.map((s) => s.keyword))];
-
-  for (const keyword of keywords) {
-    try {
-      const added = await refreshKeyword(keyword);
-      if (added === 0) continue;
-
-      if (inQuietHours()) {
-        logger.info(`[jobs] 免打扰时段，暂不推送「${keyword}」`);
-        continue;
-      }
-
-      const latest = await prisma.newsItem.findFirst({
-        where: { keyword },
-        orderBy: { publishedAt: 'desc' },
-      });
-      if (!latest) continue;
-
-      const targets = await prisma.subscribe.findMany({
-        where: { keyword, remain: { gt: 0 } },
-      });
-
-      for (const sub of targets) {
-        const user = await prisma.user.findUnique({ where: { id: sub.userId } });
-        if (!user) continue;
-
-        // 频控：滚动 24 小时内该用户该关键词已推条数
-        const since = new Date(Date.now() - 24 * 3600 * 1000);
-        const sentCount = await prisma.pushLog.count({
-          where: {
-            userId: sub.userId,
-            keyword,
-            channel: 'news',
-            status: 'sent',
-            sentAt: { gte: since },
-          },
-        });
-        if (sentCount >= config.push.perKeywordPerDay) continue;
-
-        const res = await sendSubscribeMessage({
-          openid: user.openid,
-          templateId: sub.templateId,
-          page: `pages/news/index?keyword=${encodeURIComponent(keyword)}`,
-          data: {
-            thing1: { value: latest.title.slice(0, 20) },
-            thing2: { value: `「${keyword}」有 ${added} 条更新` },
-            time3: { value: new Date().toISOString().slice(0, 19).replace('T', ' ') },
-          },
-        });
-
-        await prisma.pushLog.create({
-          data: {
-            userId: sub.userId,
-            channel: 'news',
-            keyword,
-            newsId: latest.id,
-            status: res.ok ? 'sent' : 'failed',
-          },
-        });
-
-        if (res.ok) {
-          await prisma.subscribe.update({
-            where: { id: sub.id },
-            data: { remain: { decrement: 1 } },
-          });
-        }
-      }
-    } catch (e) {
-      logger.error(e);
-    }
-  }
 }
 
 async function targetTitle(toolType: string, targetId: string) {
@@ -112,15 +46,58 @@ async function targetTitle(toolType: string, targetId: string) {
     const g = await prisma.groupTodo.findUnique({ where: { id: targetId } });
     return g?.title ?? '群组待办提醒';
   }
+  if (toolType === 'note') {
+    const n = await prisma.note.findUnique({ where: { id: targetId } });
+    return n?.title || n?.content?.slice(0, 20) || '便签提醒';
+  }
   return '提醒';
 }
 
-/** 提醒：到期且还有额度 → 推送 → 扣额度，额度用尽标记 sent */
+function typeLabel(toolType: string) {
+  if (toolType === 'countdown') return '倒数日提醒';
+  if (toolType === 'group_todo') return '群组待办提醒';
+  if (toolType === 'note') return '便签提醒';
+  return '待办提醒';
+}
+
+/** 点推送后落到对应工具页 */
+function pushPage(toolType: string) {
+  if (toolType === 'countdown') return 'pages/countdown/index';
+  if (toolType === 'group_todo') return 'pages/group/index';
+  if (toolType === 'note') return 'pages/note/index';
+  if (toolType === 'weather') return 'pages/weather/index';
+  return 'pages/todo/index';
+}
+
+/**
+ * 天气订阅推送字段：模板「天气提醒」的五个关键词。
+ * phrase 类有 5 字上限、thing 类 20 字，超长截断。
+ */
+async function weatherPayload(r: { targetId: string; city: string | null }) {
+  const w = await getWeatherNow(r.targetId);
+  return {
+    date1: { value: dateInTz() },
+    phrase2: { value: (r.city || '本地').slice(0, 5) },
+    phrase3: { value: w.text.slice(0, 5) },
+    character_string4: { value: `${w.temp}°` },
+    thing5: { value: `${w.text}，${w.temp}度，体感${w.feelsLike}度`.slice(0, 20) },
+  };
+}
+
+let reminderRunning = false;
+
+/** 提醒：到期且还有额度 → 推送 → 扣额度；定期提醒排下一次，额度用尽挂起等补充 */
 async function reminderJob(logger: { info: (m: string) => void; error: (e: unknown) => void }) {
-  if (wxConfigured && !config.wx.templateId) {
-    logger.info('[jobs] 未配置 WX_TEMPLATE_ID，工具提醒已跳过');
-    return;
+  if (reminderRunning) return;
+  reminderRunning = true;
+  try {
+    await runReminders(logger);
+  } finally {
+    reminderRunning = false;
   }
+}
+
+async function runReminders(logger: { info: (m: string) => void; error: (e: unknown) => void }) {
   const due = await prisma.reminder.findMany({
     where: { status: 'pending', remindAt: { lte: new Date() }, remain: { gt: 0 } },
     take: 50,
@@ -132,47 +109,88 @@ async function reminderJob(logger: { info: (m: string) => void; error: (e: unkno
   }
 
   for (const r of due) {
+    // 便签等自带模板的提醒不依赖全局配置；没自带又没配 WX_TEMPLATE_ID 的只能跳过
+    if (!r.templateId && !config.wx.templateId) {
+      logger.info('[jobs] 未配置 WX_TEMPLATE_ID 且该提醒无自带模板，已跳过');
+      continue;
+    }
     const user = await prisma.user.findUnique({ where: { id: r.userId } });
     if (!user) continue;
 
-    const title = await targetTitle(r.toolType, r.targetId);
-    const res = await sendSubscribeMessage({
-      openid: user.openid,
-      templateId: config.wx.templateId,
-      page: 'pages/todo/index',
-      data: {
-        thing1: { value: title.slice(0, 20) },
-        thing2: { value: r.toolType === 'group_todo' ? '群组待办提醒' : '待办提醒' },
-        time3: { value: new Date().toISOString().slice(0, 19).replace('T', ' ') },
-      },
-    });
+    try {
+      const isWeather = r.toolType === 'weather';
+      const title = isWeather ? r.city || '天气提醒' : await targetTitle(r.toolType, r.targetId);
+      // 字段 key 必须与模板关键词一致，多了少了都会 47003：
+      // - 工具提醒走「日程提醒」模板（thing5 标题 / thing2 内容 / date4 时间）
+      // - 天气订阅走「天气提醒」模板（date1 日期 / phrase2 城市 / phrase3 天气 / character_string4 温度 / thing5 提示）
+      const data = isWeather
+        ? await weatherPayload(r)
+        : {
+            thing5: { value: title.slice(0, 20) },
+            thing2: { value: typeLabel(r.toolType) },
+            date4: { value: new Date().toISOString().slice(0, 19).replace('T', ' ') },
+          };
 
-    await prisma.pushLog.create({
-      data: {
-        userId: r.userId,
-        channel: 'reminder',
-        reminderId: r.id,
-        status: res.ok ? 'sent' : 'failed',
-      },
-    });
-
-    if (res.ok) {
-      const left = r.remain - 1;
-      await prisma.reminder.update({
-        where: { id: r.id },
-        data: { remain: left, status: left > 0 ? 'pending' : 'sent' },
+      const res = await sendSubscribeMessage({
+        openid: user.openid,
+        // 便签/天气等自带模板的用自带值，老数据 / 工具类回退到全局模板
+        templateId: r.templateId || config.wx.templateId,
+        page: pushPage(r.toolType),
+        data,
       });
-    } else if (res.errcode === 43101 || res.errcode === 43102) {
-      // 用户拒收 / 模板失效：永久失败，停止重试
-      await prisma.reminder.update({ where: { id: r.id }, data: { status: 'failed' } });
-      logger.info(`[jobs] 提醒 ${r.id} 永久失败 (${res.errcode})`);
+
+      await prisma.pushLog.create({
+        data: {
+          userId: r.userId,
+          channel: 'reminder',
+          reminderId: r.id,
+          status: res.ok ? 'sent' : 'failed',
+        },
+      });
+
+      if (res.ok) {
+        if (r.repeat) {
+          const repeatDay = r.repeat === 'monthly' ? r.repeatDay ?? repeatDayInTimezone(r.remindAt) : null;
+          // 定期提醒：排下一次并保持 pending；额度耗尽时等 grant 补充后继续
+          await prisma.reminder.update({
+            where: { id: r.id },
+            data: {
+              remindAt: nextOccurrence(r.remindAt, r.repeat, repeatDay ?? undefined),
+              repeatDay,
+              remain: { decrement: 1 },
+              status: 'pending',
+            },
+          });
+        } else {
+          await prisma.reminder.update({
+            where: { id: r.id },
+            data: { remain: { decrement: 1 }, status: 'sent' },
+          });
+        }
+      } else if (res.errcode === 43101 || res.errcode === 43102) {
+        // 用户拒收 / 模板失效：永久失败，停止重试
+        await prisma.reminder.update({ where: { id: r.id }, data: { status: 'failed' } });
+        logger.info(`[jobs] 提醒 ${r.id} 永久失败 (${res.errcode})`);
+      } else {
+        // 瞬时错误（微信侧抖动等）：保持 pending 但退避 10 分钟，
+        // 否则会每分钟重试一次、每次都写一条 pushLog，表会被失败提醒刷爆
+        await prisma.reminder.update({
+          where: { id: r.id },
+          data: { remindAt: new Date(Date.now() + 10 * 60 * 1000) },
+        });
+        logger.info(`[jobs] 提醒 ${r.id} 推送失败 (${res.errcode})，退避 10 分钟后重试`);
+      }
+    } catch (e) {
+      // 天气源抖动 / 数据库错误等：同样退避，不让单条失败卡住整批
+      logger.error(e);
+      await prisma.reminder
+        .update({ where: { id: r.id }, data: { remindAt: new Date(Date.now() + 10 * 60 * 1000) } })
+        .catch(() => {});
     }
-    // 其他错误保持 pending，下轮重试
   }
 }
 
 export function startJobs(logger: { info: (m: string) => void; error: (e: unknown) => void }) {
-  setInterval(() => void newsJob(logger).catch((e) => logger.error(e)), NEWS_INTERVAL).unref?.();
   setInterval(() => void reminderJob(logger).catch((e) => logger.error(e)), REMINDER_INTERVAL).unref?.();
-  logger.info('[jobs] 调度启动：资讯 30 分钟 / 提醒 1 分钟');
+  logger.info('[jobs] 调度启动：提醒 1 分钟');
 }

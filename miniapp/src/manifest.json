@@ -6,13 +6,14 @@
   "versionCode": "100",
   "transformPx": false,
   "mp-weixin": {
-    "appid": "wxb5e5511df68c3785",
+    "appid": "wx60d29579ccb8a0d9",
     "setting": {
       "urlCheck": false,
       "es6": true,
       "minified": true
     },
-    "usingComponents": true
+    "usingComponents": true,
+    "__usePrivacyCheck__": true
   },
   "vueVersion": "3"
 }

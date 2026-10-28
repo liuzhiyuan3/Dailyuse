@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../plugins/db';
+import { assertContentSafe } from '../lib/seccheck';
 
 /** 邀请码：10 位十六进制 = 40 bit，纯数字爆破在限流下不现实 */
 function makeCode() {
@@ -27,7 +28,14 @@ export const groupRoutes: FastifyPluginAsync = async (app) => {
 
     const groups = await Promise.all(
       memberships.map(async (m) => {
-        const [memberCount, todoCount, doneCount] = await Promise.all([
+        const [members, memberCount, todoCount, doneCount] = await Promise.all([
+          // 卡片头像只需要前 5 个成员的昵称首字
+          prisma.groupMember.findMany({
+            where: { groupId: m.groupId },
+            include: { user: { select: { nickname: true } } },
+            orderBy: { joinedAt: 'asc' },
+            take: 5,
+          }),
           prisma.groupMember.count({ where: { groupId: m.groupId } }),
           prisma.groupTodo.count({ where: { groupId: m.groupId } }),
           prisma.groupTodo.count({ where: { groupId: m.groupId, done: true } }),
@@ -40,6 +48,8 @@ export const groupRoutes: FastifyPluginAsync = async (app) => {
           memberCount,
           todoCount,
           doneCount,
+          // 供首页卡片渲染头像；没设昵称时前端兜底显示「我」/序号
+          memberNames: members.map((x) => x.user?.nickname ?? ''),
           createdAt: m.group.createdAt,
         };
       })
@@ -54,6 +64,8 @@ export const groupRoutes: FastifyPluginAsync = async (app) => {
     if (!name || name.length > 40) {
       return reply.code(400).send({ code: 400, message: '群名需 1-40 字' });
     }
+    // 群名对全体成员可见，走内容安全检测
+    await assertContentSafe(name, req.user.openid ?? '');
 
     const group = await prisma.group.create({
       data: {
@@ -107,7 +119,13 @@ export const groupRoutes: FastifyPluginAsync = async (app) => {
 
     const body = (req.body ?? {}) as { title?: string; assigneeId?: string; dueAt?: string };
     const title = (body.title ?? '').trim();
-    if (!title) return reply.code(400).send({ code: 400, message: '标题不能为空' });
+    if (!title || title.length > 200) {
+      return reply.code(400).send({ code: 400, message: '标题需 1-200 字' });
+    }
+    if (body.dueAt && Number.isNaN(Date.parse(body.dueAt))) {
+      return reply.code(400).send({ code: 400, message: 'dueAt 不合法' });
+    }
+    await assertContentSafe(title, req.user.openid ?? '');
 
     const todo = await prisma.groupTodo.create({
       data: {
@@ -130,7 +148,15 @@ export const groupRoutes: FastifyPluginAsync = async (app) => {
     const body = (req.body ?? {}) as { done?: boolean; title?: string; assigneeId?: string };
     const data: Record<string, unknown> = {};
     if (typeof body.done === 'boolean') data.done = body.done;
-    if (typeof body.title === 'string') data.title = body.title;
+    if (typeof body.title === 'string') {
+      const title = body.title.trim();
+      if (!title || title.length > 200) {
+        return reply.code(400).send({ code: 400, message: '标题需 1-200 字' });
+      }
+      // 改标题也要过检，堵住「先建安全标题再改成违规内容」的绕过
+      await assertContentSafe(title, req.user.openid ?? '');
+      data.title = title;
+    }
     if (typeof body.assigneeId === 'string') data.assigneeId = body.assigneeId;
 
     const result = await prisma.groupTodo.updateMany({ where: { id: todoId, groupId: id }, data });
